@@ -64,7 +64,7 @@ elif (sys.platform == "linux"):
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
 data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset102_human_brain_test500"
-result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_161_v13_e150"
+result_folder_path = r"/data/kfchen/trace_ws/gt_seg_downsample"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
@@ -190,23 +190,23 @@ def skel_tif_file(file_name, tif_folder, skel_folder):
 
 def skel_tif_folder(tif_folder, skel_folder):
     file_names = [f for f in os.listdir(tif_folder) if f.endswith('.tif')]
-    # partial_func = partial(skel_tif_file, tif_folder=tif_folder, skel_folder=skel_folder)
-    # with Pool(pool_num) as p:
-    #     for _ in tqdm(p.imap(partial_func, file_names),
-    #                   total=len(file_names), desc="skel_tif_folder", unit="file"):
-    #         pass
-    fp_ratio_list = []
-    for file_name in file_names:
-        tiff = tifffile.imread(os.path.join(tif_folder, file_name))
-        fp_ratio = np.sum(tiff) / 255
-        fp_ratio = fp_ratio / (tiff.shape[0] * tiff.shape[1] * tiff.shape[2])
-        fp_ratio_list.append(fp_ratio)
-
-    print(f"mean fp ratio: {np.mean(fp_ratio_list)}")
-    print(f"max fp ratio: {np.max(fp_ratio_list)}")
-    print(f"min fp ratio: {np.min(fp_ratio_list)}")
-
-    time.sleep(465456)
+    partial_func = partial(skel_tif_file, tif_folder=tif_folder, skel_folder=skel_folder)
+    with Pool(pool_num) as p:
+        for _ in tqdm(p.imap(partial_func, file_names),
+                      total=len(file_names), desc="skel_tif_folder", unit="file"):
+            pass
+    # fp_ratio_list = []
+    # for file_name in file_names:
+    #     tiff = tifffile.imread(os.path.join(tif_folder, file_name))
+    #     fp_ratio = np.sum(tiff) / 255
+    #     fp_ratio = fp_ratio / (tiff.shape[0] * tiff.shape[1] * tiff.shape[2])
+    #     fp_ratio_list.append(fp_ratio)
+    #
+    # print(f"mean fp ratio: {np.mean(fp_ratio_list)}")
+    # print(f"max fp ratio: {np.max(fp_ratio_list)}")
+    # print(f"min fp ratio: {np.min(fp_ratio_list)}")
+    #
+    # time.sleep(465456)
 
 
 

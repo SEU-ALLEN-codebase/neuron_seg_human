@@ -347,10 +347,22 @@ def copy_gt_files(source_path, dest_path, mutisoma_marker_path, generate_muti_so
                 os.rename(os.path.join(dest_path, file_name), os.path.join(dest_path, file_name[:-5] + '.swc'))
 
 
+def cp_gt_tif_down_sample(source_dir="/data/kfchen/trace_ws/result500_164_500_noaug_noptls/tif",
+                          target_dir="/data/kfchen/trace_ws/gt_seg_downsample/tif"):
+    file_names = os.listdir(source_dir)
+    for file_name in file_names:
+        if(file_name.endswith('.tif')):
+            img = tifffile.imread(os.path.join(source_dir, file_name))
+            img = block_reduce(img, block_size=(2, 2, 2), func=np.max)
+            tifffile.imwrite(os.path.join(target_dir, file_name), img.astype("uint8"))
 
 
 
 if __name__ == '__main__':
+    # cp_gt_tif_down_sample()
+    # print("done")
+    # time.sleep(10000)
+
     nnUNet_raw = r"/data/kfchen/nnUNet/nnUNet_raw"
     raw_info_path = "/home/kfchen/dataset/img/raw_info.xlsx"
     mutisoma_marker_path = r"/data/kfchen/nnUNet/nnUNet_raw/muti_soma_markers"
