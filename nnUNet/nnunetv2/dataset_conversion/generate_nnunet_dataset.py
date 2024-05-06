@@ -347,7 +347,7 @@ def copy_gt_files(source_path, dest_path, mutisoma_marker_path, generate_muti_so
                 os.rename(os.path.join(dest_path, file_name), os.path.join(dest_path, file_name[:-5] + '.swc'))
 
 
-def cp_gt_tif_down_sample(source_dir="/data/kfchen/trace_ws/result500_164_500_noaug_noptls/tif",
+def cp_gt_tif_down_sample(source_dir="/data/kfchen/trace_ws/resized_dataset500/lab",
                           target_dir="/data/kfchen/trace_ws/gt_seg_downsample/tif"):
     file_names = os.listdir(source_dir)
     for file_name in file_names:
