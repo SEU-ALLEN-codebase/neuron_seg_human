@@ -63,7 +63,7 @@ elif (sys.platform == "linux"):
 # pred_folder_path = os.path.join(pred_path, "3d_cascade_fullres")
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
-data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset102_human_brain_test500"
+data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset164_human_brain_resized_10k_source"
 result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_new_resized_test_noptls"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
@@ -98,8 +98,9 @@ gmsoma_marker_folder_path = os.path.join(pred_path, "gmsoma_markers")
 # muti_soma_marker_folder_path = r"E:\tracing_ws\10847\muti_soma_markers"
 muti_soma_marker_folder_path = r"/data/kfchen/trace_ws/muti_soma_markers"
 name_mapping_path = os.path.join(pred_path, "name_mapping.csv")
-if(not os.path.exists(name_mapping_path)):
-    shutil.copy(os.path.join(data_source_folder_path, "name_mapping.csv"), name_mapping_path)
+if(os.path.exists(name_mapping_path)):
+    os.remove(name_mapping_path)
+shutil.copy(os.path.join(data_source_folder_path, "name_mapping.csv"), name_mapping_path)
 v3dswc_copy_folder_path = os.path.join(pred_path, "v3dswc_copy")
 
 # pbd_folder_path = r"D:\tracing_ws\dataset\test1223"
@@ -1217,6 +1218,19 @@ def compare_tif(folder1, folder2, out_folder):
         comp_mip = np.concatenate((mip1, mip2), axis=1)
         tifffile.imsave(os.path.join(out_folder, file_name1), comp_mip)
 
+def check_fp_ratio_folder(tif_folder):
+    file_names = [f for f in os.listdir(tif_folder) if f.endswith('.tif')]
+
+    fp_ratio_list = []
+    for file_name in file_names:
+        tiff = tifffile.imread(os.path.join(tif_folder, file_name))
+        fp_ratio = np.sum(tiff) / 255
+        fp_ratio = fp_ratio / (tiff.shape[0] * tiff.shape[1] * tiff.shape[2])
+        fp_ratio_list.append(fp_ratio)
+
+    print(f"mean fp ratio: {np.mean(fp_ratio_list)}")
+    print(f"max fp ratio: {np.max(fp_ratio_list)}")
+    print(f"min fp ratio: {np.min(fp_ratio_list)}")
 
 def prepossessing():
     remove_others_in_folder(tif_folder_path)
@@ -1225,6 +1239,9 @@ def prepossessing():
     #
     # # ###########adf_folder(tif_folder_path, adf_folder_path)
     #
+
+    check_fp_ratio_folder(tif_folder_path)
+
     skel_tif_folder(tif_folder_path, skel_folder_path)
     get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
     get_skelwithsoma_folder(skel_folder_path, soma_folder_path, skelwithsoma_folder_path)
