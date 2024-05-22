@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import time
 import uuid
 from functools import partial
 from multiprocessing import Pool
@@ -63,7 +64,7 @@ elif (sys.platform == "linux"):
 # pred_folder_path = os.path.join(pred_path, "3d_cascade_fullres")
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
-data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset102_human_brain_test500/"
+data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset102_human_brain_test500"
 result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_fold0_source"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
@@ -196,6 +197,7 @@ def skel_tif_folder(tif_folder, skel_folder):
         for _ in tqdm(p.imap(partial_func, file_names),
                       total=len(file_names), desc="skel_tif_folder", unit="file"):
             pass
+
     # fp_ratio_list = []
     # for file_name in file_names:
     #     tiff = tifffile.imread(os.path.join(tif_folder, file_name))
@@ -209,6 +211,21 @@ def skel_tif_folder(tif_folder, skel_folder):
     #
     # time.sleep(465456)
 
+def check_fp_ratio_folder(tif_folder):
+    file_names = [f for f in os.listdir(tif_folder) if f.endswith('.tif')]
+
+    fp_ratio_list = []
+    for file_name in file_names:
+        tiff = tifffile.imread(os.path.join(tif_folder, file_name))
+        fp_ratio = np.sum(tiff) / 255
+        fp_ratio = fp_ratio / (tiff.shape[0] * tiff.shape[1] * tiff.shape[2])
+        fp_ratio_list.append(fp_ratio)
+
+    print(f"mean fp ratio: {np.mean(fp_ratio_list)}")
+    print(f"max fp ratio: {np.max(fp_ratio_list)}")
+    print(f"min fp ratio: {np.min(fp_ratio_list)}")
+    #
+    # time.sleep(465456)
 
 
 
@@ -502,11 +519,10 @@ def get_soma_regions_file(file_name, tif_folder, soma_folder, muti_soma_marker_f
 
     if (os.path.exists(soma_region_path)):
         return
-    # try:
-    soma_region = get_soma_region(tif_path, muti_soma_marker_path)
-    # except:
-    #     print(f"error in {file_name}")
-    #     return
+    try:
+        soma_region = get_soma_region(tif_path, muti_soma_marker_path)
+    except:
+        return
     if (soma_region is None):
         return
     # binary
@@ -1099,7 +1115,7 @@ def connect_to_soma_file(file_name, swc_folder, soma_folder, conn_folder):
     #
     #     point_l.p[1].s.remove(s)
     #     point_l.p[s].pruned = True
-
+    # print(conn_path)
     write_swc(conn_path, point_l)
     del soma_region, point_l
 
@@ -1124,7 +1140,10 @@ def to_v3dswc_file(file_name, swc_folder, v3dswc_folder):
     full_name = os.path.basename(swc_path).replace('.swc', '')
     # print(full_name)
     df = pd.read_csv(name_mapping_path)
-    img_size = df[df['full_name'] == full_name]['img_size'].values[0]
+    try:
+        img_size = df[df['full_name'] == full_name]['img_size'].values[0]
+    except:
+        img_size = df[df['full_name'].str.split('_').str[0] == full_name.split("_")[0]]['img_size'].values[0]
     # print(img_size)
     img_size = img_size.split(',')
 
@@ -1218,31 +1237,18 @@ def compare_tif(folder1, folder2, out_folder):
         comp_mip = np.concatenate((mip1, mip2), axis=1)
         tifffile.imsave(os.path.join(out_folder, file_name1), comp_mip)
 
-def check_fp_ratio_folder(tif_folder):
-    file_names = [f for f in os.listdir(tif_folder) if f.endswith('.tif')]
-
-    fp_ratio_list = []
-    for file_name in file_names:
-        tiff = tifffile.imread(os.path.join(tif_folder, file_name))
-        fp_ratio = np.sum(tiff) / 255
-        fp_ratio = fp_ratio / (tiff.shape[0] * tiff.shape[1] * tiff.shape[2])
-        fp_ratio_list.append(fp_ratio)
-
-    print(f"mean fp ratio: {np.mean(fp_ratio_list)}")
-    print(f"max fp ratio: {np.max(fp_ratio_list)}")
-    print(f"min fp ratio: {np.min(fp_ratio_list)}")
 
 def prepossessing():
     remove_others_in_folder(tif_folder_path)
     rename_tif_folder(tif_folder_path)
     uint8_tif_folder(tif_folder_path)
-    #
-    # # ###########adf_folder(tif_folder_path, adf_folder_path)
-    #
-
+    # #
+    # # # ###########adf_folder(tif_folder_path, adf_folder_path)
+    # #
     check_fp_ratio_folder(tif_folder_path)
-
-    # skel_tif_folder(tif_folder_path, skel_folder_path)
+    # time.sleep(100000)
+    #
+    skel_tif_folder(tif_folder_path, skel_folder_path)
     get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
     get_skelwithsoma_folder(skel_folder_path, soma_folder_path, skelwithsoma_folder_path)
     get_somamarker_folder(soma_folder_path, somamarker_folder_path, muti_soma_marker_folder_path,
@@ -1311,10 +1317,10 @@ if __name__ == '__main__':
     # rename_muti_soma_markers(muti_soma_marker_folder_path)
 
     prepossessing()
-    # folder1 = r"E:\tracing_ws\10847\TEST10K7\tif"
-    # folder2 = r"E:\tracing_ws\10847\TEST10K1\tif"
-    # out_folder = r"E:\tracing_ws\10847\TEST10K7\compare"
-    # compare_tif(folder1, folder2, out_folder)
+    # # folder1 = r"E:\tracing_ws\10847\TEST10K7\tif"
+    # # folder2 = r"E:\tracing_ws\10847\TEST10K1\tif"
+    # # out_folder = r"E:\tracing_ws\10847\TEST10K7\compare"
+    # # compare_tif(folder1, folder2, out_folder)
     tracing()
     postprocessing()
 
