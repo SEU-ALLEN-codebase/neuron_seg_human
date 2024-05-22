@@ -66,6 +66,7 @@ from torch.cuda.amp import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from nnunetv2.preprocessing.test_trans import TestTransform
+from nnunetv2.preprocessing.predecessor_trans import AddPredecessorImageTransform
 
 
 class nnUNetTrainer(object):
@@ -705,6 +706,7 @@ class nnUNetTrainer(object):
             foreground_labels: Union[Tuple[int, ...], List[int]] = None,
             regions: List[Union[List[int], Tuple[int, ...], int]] = None,
             ignore_label: int = None,
+            get_predecessor_from_target=True,
     ) -> AbstractTransform:
         tr_transforms = []
         if do_dummy_2d_data_aug:
@@ -784,6 +786,12 @@ class nnUNetTrainer(object):
         if deep_supervision_scales is not None:
             tr_transforms.append(DownsampleSegForDSTransform2(deep_supervision_scales, 0, input_key='target',
                                                               output_key='target'))
+
+        if(get_predecessor_from_target):
+            tr_transforms.append(AddPredecessorImageTransform('predecessor', 'target', 'soma'))
+            tr_transforms.append(NumpyToTensor(['predecessor'], 'float'))
+            tr_transforms.append(NumpyToTensor(['soma'], 'float'))
+
         tr_transforms.append(NumpyToTensor(['data', 'target'], 'float'))
         tr_transforms = Compose(tr_transforms)
         return tr_transforms
