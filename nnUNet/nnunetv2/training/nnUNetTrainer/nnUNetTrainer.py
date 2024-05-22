@@ -803,6 +803,7 @@ class nnUNetTrainer(object):
             foreground_labels: Union[Tuple[int, ...], List[int]] = None,
             regions: List[Union[List[int], Tuple[int, ...], int]] = None,
             ignore_label: int = None,
+            get_predecessor_from_target=True,
     ) -> AbstractTransform:
         val_transforms = []
         val_transforms.append(RemoveLabelTransform(-1, 0))
@@ -821,6 +822,11 @@ class nnUNetTrainer(object):
         if deep_supervision_scales is not None:
             val_transforms.append(DownsampleSegForDSTransform2(deep_supervision_scales, 0, input_key='target',
                                                                output_key='target'))
+
+        if(get_predecessor_from_target):
+            val_transforms.append(AddPredecessorImageTransform('predecessor', 'target', 'soma'))
+            val_transforms.append(NumpyToTensor(['predecessor'], 'float'))
+            val_transforms.append(NumpyToTensor(['soma'], 'float'))
 
         val_transforms.append(NumpyToTensor(['data', 'target'], 'float'))
         val_transforms = Compose(val_transforms)
