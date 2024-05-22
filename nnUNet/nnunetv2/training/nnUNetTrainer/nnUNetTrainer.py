@@ -924,15 +924,74 @@ class nnUNetTrainer(object):
         # lrs are the same for all workers so we don't need to gather them in case of DDP training
         self.logger.log('lrs', self.optimizer.param_groups[0]['lr'], self.current_epoch)
 
-    def train_step(self, batch: dict) -> dict:
+    def save_mip(self, epoch, batch_id, tag, data, target, output):
+        # print(f"tag: {tag}, data.shape: {data[0].shape}, target.shape: {target[0].shape}, output.shape: {output[0].shape}")
+        # tag: train, data.shape: torch.Size([1, 48, 224, 224]), target.shape: torch.Size(
+        # [2, 1, 48, 224, 224]), output.shape: torch.Size([2, 48, 224, 224])
+        # print(len(target)) # 5
+        x_clone = output.detach().cpu().numpy()
+        y_clone = target[0][0].detach().cpu().numpy()
+        data_clone = data[0][0].detach().cpu().numpy()
+        seg = np.zeros((x_clone.shape[0], 1, x_clone.shape[2], x_clone.shape[3], x_clone.shape[4]))
+        for batch in range(x_clone.shape[0]):
+            seg0 = x_clone[batch].argmax(axis=0)
+            seg[batch] = seg0[np.newaxis, :]
+        seg = seg[0][0]
+        data_clone = np.asarray(data_clone)
+        y_clone = np.asarray(y_clone)
+        seg = np.asarray(seg)
+        # print(f"seg.shape: {seg.shape}, y_clone.shape: {y_clone.shape}, data_clone.shape: {data_clone.shape}")
+        # mips
+        seg = np.max(seg, axis=0)
+        y_clone = np.max(y_clone, axis=0)
+        data_clone = np.max(data_clone, axis=0)
+
+        # 归一化到0-255并转换为uint8
+        seg_normalized = ((seg - seg.min()) / (seg.max() - seg.min()) * 255).astype(np.uint8)
+        y_clone_normalized = ((y_clone - y_clone.min()) / (y_clone.max() - y_clone.min()) * 255).astype(np.uint8)
+        data_clone_normalized = ((data_clone - data_clone.min()) / (data_clone.max() - data_clone.min()) * 255).astype(
+            np.uint8)
+
+        # 创建一个图和子图
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))  # 调整整体大小和子图数量
+        fig.subplots_adjust(hspace=0.3, wspace=0.3)  # 调整子图间的间隔
+
+        # 显示第一张图
+        ax = axes[0]
+        ax.imshow(seg_normalized, cmap='gray')
+        ax.axis('off')  # 关闭坐标轴
+        ax.set_title('Segmentation')
+
+        # 显示第二张图
+        ax = axes[1]
+        ax.imshow(y_clone_normalized, cmap='gray')
+        ax.axis('off')
+        ax.set_title('Y Clone')
+
+        # 显示第三张图
+        ax = axes[2]
+        ax.imshow(data_clone_normalized, cmap='gray')
+        ax.axis('off')
+        ax.set_title('Data Clone')
+
+        # 保存整张图
+        png_path = f"/data/kfchen/nnUNet/temp_mip/{tag}/epoch_{epoch}_batch_{batch_id}.png"
+        plt.savefig(png_path)
+        plt.close(fig)  # 关闭图像，避免在内存中占用过多资源
+
+    def train_step(self, epoch, batch_id, batch: dict) -> dict:
         data = batch['data']
         target = batch['target']
+        predecessor = batch['predecessor']
+        soma = batch['soma']
 
         data = data.to(self.device, non_blocking=True)
         if isinstance(target, list):
             target = [i.to(self.device, non_blocking=True) for i in target]
         else:
             target = target.to(self.device, non_blocking=True)
+        predecessor = predecessor.to(self.device, non_blocking=True)
+        soma = soma.to(self.device, non_blocking=True)
 
         self.optimizer.zero_grad(set_to_none=True)
         # Autocast can be annoying
@@ -941,8 +1000,9 @@ class nnUNetTrainer(object):
         # So autocast will only be active if we have a cuda device.
         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
             output = self.network(data)
+            # self.save_mip(epoch, batch_id, "train", data, target, output)
             # del data
-            l = self.loss(output, target)
+            l, loss_dict = self.loss(output, target, predecessor, soma)
 
         if self.grad_scaler is not None:
             self.grad_scaler.scale(l).backward()
@@ -954,7 +1014,12 @@ class nnUNetTrainer(object):
             l.backward()
             torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
             self.optimizer.step()
-        return {'loss': l.detach().cpu().numpy()}
+
+        loss_dict['loss'] = l.detach().cpu().numpy()
+        # loss_dict['loss'] = l
+        # for k, v in loss_dict.items():
+        #     loss_dict[k] = v.detach().cpu().numpy()
+        return loss_dict
 
     def on_train_epoch_end(self, train_outputs: List[dict]):
         outputs = collate_outputs(train_outputs)
@@ -965,21 +1030,29 @@ class nnUNetTrainer(object):
             loss_here = np.vstack(losses_tr).mean()
         else:
             loss_here = np.mean(outputs['loss'])
+            ptls_here = np.mean(outputs['ptls'])
+            # print(f"ptls_here: {ptls_here}")
 
         self.logger.log('train_losses', loss_here, self.current_epoch)
+        self.logger.log("train_ptls", ptls_here, self.current_epoch)
 
     def on_validation_epoch_start(self):
         self.network.eval()
 
-    def validation_step(self, batch: dict) -> dict:
+    def validation_step(self, epoch, batch_id, batch: dict) -> dict:
         data = batch['data']
         target = batch['target']
+        predecessor = batch['predecessor']
+        soma = batch['soma']
 
         data = data.to(self.device, non_blocking=True)
         if isinstance(target, list):
             target = [i.to(self.device, non_blocking=True) for i in target]
         else:
             target = target.to(self.device, non_blocking=True)
+        predecessor = predecessor.to(self.device, non_blocking=True)
+        soma = soma.to(self.device, non_blocking=True)
+        # print(f"predecessor.shape: {predecessor.shape}, soma.shape: {soma.shape} in validation_step")
 
         # Autocast can be annoying
         # If the device_type is 'cpu' then it's slow as heck and needs to be disabled.
@@ -988,7 +1061,7 @@ class nnUNetTrainer(object):
         with autocast(self.device.type, enabled=True) if self.device.type == 'cuda' else dummy_context():
             output = self.network(data)
             del data
-            l = self.loss(output, target)
+            l, loss_dict = self.loss(output, target, predecessor, soma)
 
         # we only need the output with the highest output resolution (if DS enabled)
         if self.enable_deep_supervision:
@@ -1033,7 +1106,11 @@ class nnUNetTrainer(object):
             fp_hard = fp_hard[1:]
             fn_hard = fn_hard[1:]
 
-        return {'loss': l.detach().cpu().numpy(), 'tp_hard': tp_hard, 'fp_hard': fp_hard, 'fn_hard': fn_hard}
+        loss_dict['loss'] = l.detach().cpu().numpy()
+        loss_dict['tp_hard'] = tp_hard
+        loss_dict['fp_hard'] = fp_hard
+        loss_dict['fn_hard'] = fn_hard
+        return loss_dict
 
     def on_validation_epoch_end(self, val_outputs: List[dict]):
         outputs_collated = collate_outputs(val_outputs)
@@ -1061,12 +1138,14 @@ class nnUNetTrainer(object):
             loss_here = np.vstack(losses_val).mean()
         else:
             loss_here = np.mean(outputs_collated['loss'])
+            ptls_here = np.mean(outputs_collated['ptls'])
 
         global_dc_per_class = [i for i in [2 * i / (2 * i + j + k) for i, j, k in zip(tp, fp, fn)]]
         mean_fg_dice = np.nanmean(global_dc_per_class)
         self.logger.log('mean_fg_dice', mean_fg_dice, self.current_epoch)
         self.logger.log('dice_per_class_or_region', global_dc_per_class, self.current_epoch)
         self.logger.log('val_losses', loss_here, self.current_epoch)
+        self.logger.log("val_ptls", ptls_here, self.current_epoch)
 
     def on_epoch_start(self):
         self.logger.log('epoch_start_timestamps', time(), self.current_epoch)
@@ -1080,6 +1159,8 @@ class nnUNetTrainer(object):
                                                self.logger.my_fantastic_logging['dice_per_class_or_region'][-1]])
         self.print_to_log_file(
             f"Epoch time: {np.round(self.logger.my_fantastic_logging['epoch_end_timestamps'][-1] - self.logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
+        self.print_to_log_file(f"train_ptls", np.round(self.logger.my_fantastic_logging['train_ptls'][-1], decimals=4))
+        self.print_to_log_file(f"val_ptls", np.round(self.logger.my_fantastic_logging['val_ptls'][-1], decimals=4))
 
         # handling periodic checkpointing
         current_epoch = self.current_epoch
@@ -1313,14 +1394,14 @@ class nnUNetTrainer(object):
             self.on_train_epoch_start()
             train_outputs = []
             for batch_id in range(self.num_iterations_per_epoch):
-                train_outputs.append(self.train_step(next(self.dataloader_train)))
+                train_outputs.append(self.train_step(epoch, batch_id, next(self.dataloader_train)))
             self.on_train_epoch_end(train_outputs)
 
             with torch.no_grad():
                 self.on_validation_epoch_start()
                 val_outputs = []
                 for batch_id in range(self.num_val_iterations_per_epoch):
-                    val_outputs.append(self.validation_step(next(self.dataloader_val)))
+                    val_outputs.append(self.validation_step(epoch, batch_id, next(self.dataloader_val)))
                 self.on_validation_epoch_end(val_outputs)
 
             self.on_epoch_end()
