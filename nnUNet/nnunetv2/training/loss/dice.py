@@ -70,7 +70,7 @@ class MemoryEfficientSoftDiceLoss(nn.Module):
         self.ddp = ddp
 
     def forward(self, x, y, loss_mask=None):
-        # print(y.shape)
+        # print(y.shape, x.shape)
         if self.apply_nonlin is not None:
             x = self.apply_nonlin(x)
 

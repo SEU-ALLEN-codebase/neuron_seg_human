@@ -18,4 +18,4 @@ class PolyLRScheduler(_LRScheduler):
         print(self.exponent)
         new_lr = self.initial_lr * (1 - current_step / self.max_steps) ** self.exponent
         for param_group in self.optimizer.param_groups:
-            param_group['lr'] = new_lr
+            param_group['lr'] = 1e-5
