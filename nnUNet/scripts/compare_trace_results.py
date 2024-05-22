@@ -184,8 +184,8 @@ def l_measure_gt_and_pred(gt_dir, pred_dir, gt_csv, pred_csv, violin_png,
 if __name__ == '__main__':
     # gt_dir = r"/data/kfchen/nnUNet/gt_swc"
     # pred_dir = r"/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/10847_auto_v1.4_12k/swc"
-    gt_dir = r"/data/kfchen/trace_ws/result500_fb_finetune_e400/v3dswc"
-    pred_dir = r"/data/kfchen/trace_ws/result500_161_v13_e150/v3dswc"
+    gt_dir = r"/data/kfchen/trace_ws/result500_fold4_source/v3dswc"
+    pred_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
 
     gt_csv = r"/data/kfchen/nnUNet/gt_swc.csv"
     pred_csv = r"/data/kfchen/nnUNet/pred_swc.csv"
