@@ -132,13 +132,13 @@ class TestTransform(AbstractTransform):
         # print(f"shape {data_dict['seg'].shape}, {data_dict['data'].shape} in TestTransform")
         # shape(2, 1, 48, 263, 263), (2, 1, 48, 263, 263)
 
-        num_batches = data_dict['target'].shape[0]
+        num_batches = data_dict['seg'].shape[0]
         scaled_data = []
         scaled_seg = []
 
         for batch in range(num_batches):
             data = data_dict['data'][batch]
-            seg = data_dict['target'][batch]
+            seg = data_dict['seg'][batch]
 
             # _, cc_num = cc3d.connected_components(seg[0], connectivity=26, return_N=True)
             # if(cc_num > 1):
