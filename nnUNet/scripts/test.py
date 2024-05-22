@@ -63,8 +63,8 @@ elif (sys.platform == "linux"):
 # pred_folder_path = os.path.join(pred_path, "3d_cascade_fullres")
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
-data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset164_human_brain_resized_10k_source"
-result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_new_resized_test_noptls"
+data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset102_human_brain_test500/"
+result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_fold0_source"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
@@ -222,7 +222,7 @@ def dusting(img):
 
 
 def get_min_diameter_3d(binary_image):
-    labeled_array, num_features = label(binary_image)
+    labeled_array, num_features = scipy.ndimage.label(binary_image)
     largest_cc = np.argmax(np.bincount(labeled_array.flat)[1:]) + 1
     slice_x, slice_y, slice_z = find_objects(labeled_array == largest_cc)[0]
     diameter_x = slice_x.stop - slice_x.start
@@ -435,12 +435,12 @@ def get_soma_region(img_path, marker_path=None):
     out_tmp = in_tmp.replace('.tif', '_gsdt.tif')
 
     if (sys.platform == "linux"):
-        cmd_str = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x gsdt -f gsdt -i "{in_tmp}" -o "{out_tmp}" -p 0 1 0 1.5'
+        cmd_str = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x gsdt -f gsdt -i {in_tmp} -o {out_tmp} -p 0 1 0 1.5'
         cmd_str = process_path(cmd_str)
-        print(cmd_str)
+        # print(cmd_str)
         subprocess.run(cmd_str, stdout=subprocess.DEVNULL, shell=True)
     else:
-        cmd = f'{v3d_path} /x gsdt /f gsdt /i "{in_tmp}" /o "{out_tmp}" /p 0 1 0 1.5'
+        cmd = f'{v3d_path} /x gsdt /f gsdt /i {in_tmp} /o {out_tmp} /p 0 1 0 1.5'
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
     pred = tifffile.imread(img_path).astype(np.uint8)
@@ -502,11 +502,11 @@ def get_soma_regions_file(file_name, tif_folder, soma_folder, muti_soma_marker_f
 
     if (os.path.exists(soma_region_path)):
         return
-    try:
-        soma_region = get_soma_region(tif_path, muti_soma_marker_path)
-    except:
-        print(f"error in {file_name}")
-        return
+    # try:
+    soma_region = get_soma_region(tif_path, muti_soma_marker_path)
+    # except:
+    #     print(f"error in {file_name}")
+    #     return
     if (soma_region is None):
         return
     # binary
@@ -1242,7 +1242,7 @@ def prepossessing():
 
     check_fp_ratio_folder(tif_folder_path)
 
-    skel_tif_folder(tif_folder_path, skel_folder_path)
+    # skel_tif_folder(tif_folder_path, skel_folder_path)
     get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
     get_skelwithsoma_folder(skel_folder_path, soma_folder_path, skelwithsoma_folder_path)
     get_somamarker_folder(soma_folder_path, somamarker_folder_path, muti_soma_marker_folder_path,
