@@ -1117,6 +1117,7 @@ def connect_to_soma_file(file_name, swc_folder, soma_folder, conn_folder):
     #     point_l.p[s].pruned = True
     # print(conn_path)
     write_swc(conn_path, point_l)
+    # print(len(point_l.p))
     del soma_region, point_l
 
 
@@ -1316,12 +1317,12 @@ if __name__ == '__main__':
     # temp_prepossessing()
     # rename_muti_soma_markers(muti_soma_marker_folder_path)
 
-    prepossessing()
+    # prepossessing()
     # # folder1 = r"E:\tracing_ws\10847\TEST10K7\tif"
     # # folder2 = r"E:\tracing_ws\10847\TEST10K1\tif"
     # # out_folder = r"E:\tracing_ws\10847\TEST10K7\compare"
     # # compare_tif(folder1, folder2, out_folder)
-    tracing()
+    # tracing()
     postprocessing()
 
     # num = 0

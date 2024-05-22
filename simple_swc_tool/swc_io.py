@@ -66,13 +66,11 @@ def read_swc(swc_name):
 
     return point_l # (swcPoint_list)
 
-def write_swc(filepath, point_l, fiber_l = None, reversal=False, limit=[1000, 1000, 1000], overlay=False, number_offset=0):
+def write_swc(filepath, point_l, reversal=False, limit=[1000, 1000, 1000], overlay=False, number_offset=0):
     lines = []
     for temp_p in point_l.p:
         if(temp_p.n == 0):continue
         if(temp_p.fn == -1):continue
-        if(fiber_l):
-            if(fiber_l.f[temp_p.fn - 1].pruned):continue
         if(temp_p.pruned):continue
         # if(temp_p.n not in fiber_l.f[temp_p.fn - 1].p):continue
         # if(temp_p.ishead): continue
