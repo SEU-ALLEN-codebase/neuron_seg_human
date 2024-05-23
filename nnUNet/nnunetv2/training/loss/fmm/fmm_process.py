@@ -103,6 +103,8 @@ def save_mip_image(image, filename='', temp_dir="/data/kfchen/nnUNet/temp_mip"):
     print(f"MIP图已保存为 {filename}")
 
 def get_fmm_from_img(img, temp_path=r"/home/kfchen/temp_tif", source=None):
+    if(img is None):
+        return None, None
     if(muti_cc_image_check(img)):
         return None, None
     # rand path
