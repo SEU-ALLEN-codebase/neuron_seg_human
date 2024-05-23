@@ -143,8 +143,8 @@ class MemoryEfficientSoftDiceLoss(nn.Module):
 
         ptls = self.calc_npathloss(x, y, predecessor, axes, num_paths=50, soma=soma) * 0.5
         if(random.randint(0, 99) == 0):
-            print("ptls off")
-        return -dc, {"dc": -dc.detach().cpu().numpy(), "ptls": ptls.detach().cpu().numpy()}
+            print("ptls on")
+        return -dc + ptls, {"dc": -dc.detach().cpu().numpy(), "ptls": ptls.detach().cpu().numpy()}
 
         # return -dc, {"dc": -dc.detach().cpu().numpy(), "ptls": 0}
 

@@ -180,6 +180,7 @@ class nnUNetTrainer(object):
 
         ### initializing stuff for remembering things and such
         self._best_ema = None
+        self._best_val_ptls = None
 
         ### inference things
         self.inference_allowed_mirroring_axes = None  # this variable is set in
@@ -1032,9 +1033,13 @@ class nnUNetTrainer(object):
             loss_here = np.mean(outputs['loss'])
             ptls_here = np.mean(outputs['ptls'])
             # print(f"ptls_here: {ptls_here}")
+            ce_here = np.mean(outputs['ce'])
+            dice_here = np.mean(outputs['dc'])
 
         self.logger.log('train_losses', loss_here, self.current_epoch)
         self.logger.log("train_ptls", ptls_here, self.current_epoch)
+        self.logger.log("train_ce", ce_here, self.current_epoch)
+        self.logger.log("train_dice", dice_here, self.current_epoch)
 
     def on_validation_epoch_start(self):
         self.network.eval()
@@ -1139,6 +1144,8 @@ class nnUNetTrainer(object):
         else:
             loss_here = np.mean(outputs_collated['loss'])
             ptls_here = np.mean(outputs_collated['ptls'])
+            ce_here = np.mean(outputs_collated['ce'])
+            dice_here = np.mean(outputs_collated['dc'])
 
         global_dc_per_class = [i for i in [2 * i / (2 * i + j + k) for i, j, k in zip(tp, fp, fn)]]
         mean_fg_dice = np.nanmean(global_dc_per_class)
@@ -1146,6 +1153,8 @@ class nnUNetTrainer(object):
         self.logger.log('dice_per_class_or_region', global_dc_per_class, self.current_epoch)
         self.logger.log('val_losses', loss_here, self.current_epoch)
         self.logger.log("val_ptls", ptls_here, self.current_epoch)
+        self.logger.log("val_ce", ce_here, self.current_epoch)
+        self.logger.log("val_dice", dice_here, self.current_epoch)
 
     def on_epoch_start(self):
         self.logger.log('epoch_start_timestamps', time(), self.current_epoch)
@@ -1161,6 +1170,10 @@ class nnUNetTrainer(object):
             f"Epoch time: {np.round(self.logger.my_fantastic_logging['epoch_end_timestamps'][-1] - self.logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
         self.print_to_log_file(f"train_ptls", np.round(self.logger.my_fantastic_logging['train_ptls'][-1], decimals=4))
         self.print_to_log_file(f"val_ptls", np.round(self.logger.my_fantastic_logging['val_ptls'][-1], decimals=4))
+        self.print_to_log_file(f"train_ce", np.round(self.logger.my_fantastic_logging['train_ce'][-1], decimals=4))
+        self.print_to_log_file(f"val_ce", np.round(self.logger.my_fantastic_logging['val_ce'][-1], decimals=4))
+        self.print_to_log_file(f"train_dice", np.round(self.logger.my_fantastic_logging['train_dice'][-1], decimals=4))
+        self.print_to_log_file(f"val_dice", np.round(self.logger.my_fantastic_logging['val_dice'][-1], decimals=4))
 
         # handling periodic checkpointing
         current_epoch = self.current_epoch
@@ -1172,6 +1185,11 @@ class nnUNetTrainer(object):
             self._best_ema = self.logger.my_fantastic_logging['ema_fg_dice'][-1]
             self.print_to_log_file(f"Yayy! New best EMA pseudo Dice: {np.round(self._best_ema, decimals=4)}")
             self.save_checkpoint(join(self.output_folder, 'checkpoint_best.pth'))
+
+        if (self._best_val_ptls is None or self.logger.my_fantastic_logging['val_ptls'][-1] > self._best_val_ptls):
+            self._best_val_ptls = self.logger.my_fantastic_logging['val_ptls'][-1]
+            self.print_to_log_file(f"Yayy! New best val ptls: {np.round(self._best_val_ptls, decimals=4)}")
+            self.save_checkpoint(join(self.output_folder, 'checkpoint_best_val_ptls.pth'))
 
         if self.local_rank == 0:
             self.logger.plot_progress_png(self.output_folder)
