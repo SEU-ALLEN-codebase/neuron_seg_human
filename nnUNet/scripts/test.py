@@ -65,7 +65,7 @@ elif (sys.platform == "linux"):
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
 data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset102_human_brain_test500"
-result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_fold0_source"
+result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_noptls_newsource_0524"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
@@ -1240,14 +1240,14 @@ def compare_tif(folder1, folder2, out_folder):
 
 
 def prepossessing():
-    remove_others_in_folder(tif_folder_path)
-    rename_tif_folder(tif_folder_path)
-    uint8_tif_folder(tif_folder_path)
+    # remove_others_in_folder(tif_folder_path)
+    # rename_tif_folder(tif_folder_path)
+    # uint8_tif_folder(tif_folder_path)
     # #
     # # # ###########adf_folder(tif_folder_path, adf_folder_path)
     # #
     check_fp_ratio_folder(tif_folder_path)
-    # time.sleep(100000)
+    time.sleep(100000)
     #
     skel_tif_folder(tif_folder_path, skel_folder_path)
     get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
@@ -1317,12 +1317,12 @@ if __name__ == '__main__':
     # temp_prepossessing()
     # rename_muti_soma_markers(muti_soma_marker_folder_path)
 
-    # prepossessing()
+    prepossessing()
     # # folder1 = r"E:\tracing_ws\10847\TEST10K7\tif"
     # # folder2 = r"E:\tracing_ws\10847\TEST10K1\tif"
     # # out_folder = r"E:\tracing_ws\10847\TEST10K7\compare"
     # # compare_tif(folder1, folder2, out_folder)
-    # tracing()
+    tracing()
     postprocessing()
 
     # num = 0

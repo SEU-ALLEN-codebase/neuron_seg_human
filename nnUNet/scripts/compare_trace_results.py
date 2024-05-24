@@ -183,11 +183,9 @@ def l_measure_gt_and_pred(gt_dir, pred_dir, gt_csv, pred_csv, violin_png,
     plot_violin(df_gt, df_pred, violin_png)
 
 def compare_l_measure():
-    gt_dir = r"/data/kfchen/trace_ws/gt_seg_downsample/v3dswc"
-    # gt_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
-    # pred_dir = r"/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/10847_auto_v1.4_12k/swc"
-    # gt_dir = (r"/data/kfchen/trace_ws/result500_164_500_aug_noptls/v3dswc")
-    pred_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
+    # gt_dir = r"/data/kfchen/trace_ws/gt_seg_downsample/v3dswc" # seg traced result gt
+    gt_dir = r"/data/kfchen/trace_ws/result500_noptls_newsource_0524/v3dswc"
+    pred_dir = r"/data/kfchen/trace_ws/result500_ptls_newsource_0524/v3dswc"
 
     gt_csv = r"/data/kfchen/nnUNet/gt_swc.csv"
     pred_csv = r"/data/kfchen/nnUNet/pred_swc.csv"
@@ -203,8 +201,8 @@ def compare_l_measure():
 
     l_measure_gt_and_pred(gt_dir, pred_dir, gt_csv, pred_csv, violin_png, v3d_path=v3d_path)
 
-def compare_tip_to_soma(traced_dir1 = r"/data/kfchen/trace_ws/result500_new_resized_test_noptls/connswc",
-                        traced_dir2 = r"/data/kfchen/trace_ws/result500_new_resized_test_ptls/connswc"):
+def compare_tip_to_soma(traced_dir1 = r"/data/kfchen/trace_ws/result500_noptls_newsource_0524/v3dswc",
+                        traced_dir2 = r"/data/kfchen/trace_ws/result500_ptls_newsource_0524/v3dswc"):
     dir1_files = glob.glob(os.path.join(traced_dir1, '*swc'))
     dir2_files = glob.glob(os.path.join(traced_dir2, '*swc'))
     dir1_files.sort()
@@ -264,7 +262,7 @@ def compare_tip_to_soma(traced_dir1 = r"/data/kfchen/trace_ws/result500_new_resi
 
 
 if __name__ == '__main__':
-    compare_l_measure()
-    # compare_tip_to_soma()
+    # compare_l_measure()
+    compare_tip_to_soma()
     pass
 
