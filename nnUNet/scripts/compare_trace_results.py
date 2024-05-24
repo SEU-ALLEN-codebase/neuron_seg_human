@@ -86,7 +86,7 @@ def plot_violin(df_gt, df_pred, violin_png):
     fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows), sharey=False)
     axes = axes.flatten()
 
-    df_gt['Type'] = 'noptls'  # "GT"
+    df_gt['Type'] = 'seg_traced'  # "GT"
     df_pred['Type'] = 'ptls'  # "Pred"
 
     df = pd.concat([df_gt, df_pred], axis=0)
@@ -183,8 +183,9 @@ def l_measure_gt_and_pred(gt_dir, pred_dir, gt_csv, pred_csv, violin_png,
     plot_violin(df_gt, df_pred, violin_png)
 
 def compare_l_measure():
-    # gt_dir = r"/data/kfchen/trace_ws/gt_seg_downsample/v3dswc" # seg traced result gt
-    gt_dir = r"/data/kfchen/trace_ws/result500_noptls_newsource_0524/v3dswc"
+    # gt_dir = r"/data/kfchen/nnUNet/gt_swc" # manually traced result gt
+    gt_dir = r"/data/kfchen/trace_ws/gt_seg_downsample/v3dswc" # seg traced result gt
+    # gt_dir = r"/data/kfchen/trace_ws/result500_noptls_newsource_0524/v3dswc"
     pred_dir = r"/data/kfchen/trace_ws/result500_ptls_newsource_0524/v3dswc"
 
     gt_csv = r"/data/kfchen/nnUNet/gt_swc.csv"
@@ -201,8 +202,8 @@ def compare_l_measure():
 
     l_measure_gt_and_pred(gt_dir, pred_dir, gt_csv, pred_csv, violin_png, v3d_path=v3d_path)
 
-def compare_tip_to_soma(traced_dir1 = r"/data/kfchen/trace_ws/result500_noptls_newsource_0524/v3dswc",
-                        traced_dir2 = r"/data/kfchen/trace_ws/result500_ptls_newsource_0524/v3dswc"):
+def compare_tip_to_soma(traced_dir1 = r"/data/kfchen/trace_ws/gt_seg_downsample/v3dswc",
+                        traced_dir2 = r"/data/kfchen/nnUNet/gt_swc"):
     dir1_files = glob.glob(os.path.join(traced_dir1, '*swc'))
     dir2_files = glob.glob(os.path.join(traced_dir2, '*swc'))
     dir1_files.sort()
@@ -262,7 +263,7 @@ def compare_tip_to_soma(traced_dir1 = r"/data/kfchen/trace_ws/result500_noptls_n
 
 
 if __name__ == '__main__':
-    # compare_l_measure()
-    compare_tip_to_soma()
+    compare_l_measure()
+    # compare_tip_to_soma()
     pass
 
