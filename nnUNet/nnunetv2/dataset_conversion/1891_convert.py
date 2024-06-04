@@ -7,6 +7,9 @@ import tifffile
 import threading
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import numpy as np
+from PIL import Image
+import tifffile as tiff
 
 
 def rename_swc_folder(swc_folder, new_format="brainid_{num:06}_x_{x:06}_y_{y:06}_z_{z:06}.swc"):
@@ -52,7 +55,7 @@ def find_tif_file(brain_name, soma_x, soma_y, soma_z, crop_tif_folder):
 def crop_swc_points(swc_file, result_swc_folder, offset_x, offset_y, offset_z, x_shape=256, y_shape=256, z_shape=256):
     point_l = read_swc(swc_file)
     for point in point_l.p:
-        point.x = point.x - offset_x + x_shape / 2
+        point.x = x_shape - (point.x - offset_x + x_shape / 2)
         point.y = point.y - offset_y + y_shape / 2
         point.z = point.z - offset_z + z_shape / 2
 
@@ -137,6 +140,7 @@ def crop_swc_folder(origin_swc_folder, result_swc_folder, crop_tif_folder, resul
     if(not os.path.exists(seg_folder)):
         os.makedirs(seg_folder)
     swc_files = sorted(os.listdir(origin_swc_folder))
+    # swc_files = swc_files[:10]
     new_ids = [i for i in range(1, len(swc_files) + 1)]
 
     # process_bar = tqdm(total=len(swc_files))
@@ -169,6 +173,36 @@ def crop_swc_folder(origin_swc_folder, result_swc_folder, crop_tif_folder, resul
     # 关闭进度条
     process_bar.close()
 
+def compute_mip(image_path):
+    """计算给定图像路径的最大强度投影（MIP）"""
+    img = tiff.imread(image_path)
+    mip = np.max(img, axis=1)  # 假设Z轴为0轴
+    return Image.fromarray(mip)
+
+def mip_images(image_folder, seg_folder, output_folder):
+    """处理图像和分割结果，生成并保存MIP拼接图"""
+    # 确保输出文件夹存在
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # 获取图像和分割结果文件名列表
+    image_files = sorted([f for f in os.listdir(image_folder) if f.endswith('.tif')])
+    seg_files = sorted([f for f in os.listdir(seg_folder) if f.endswith('.tif')])
+
+    for img_file, seg_file in zip(image_files, seg_files):
+        # 计算图像和分割的MIP
+        img_mip = compute_mip(os.path.join(image_folder, img_file))
+        seg_mip = compute_mip(os.path.join(seg_folder, seg_file))
+
+        # 拼接图像和分割的MIP
+        combined_image = Image.new('RGB', (img_mip.width + seg_mip.width, img_mip.height))
+        combined_image.paste(img_mip, (0, 0))
+        combined_image.paste(seg_mip, (img_mip.width, 0))
+
+        # 保存结果
+        combined_image.save(os.path.join(output_folder, f'combined_{img_file}'))
+
+
 
 if __name__ == '__main__':
     manual_swc_folder = r"/PBshare/SEU-ALLEN/Users/KaifengChen/1891/refined_swc"
@@ -179,3 +213,6 @@ if __name__ == '__main__':
     result_tif_folder = r"/PBshare/SEU-ALLEN/Users/KaifengChen/1891/crop_tif"
     seg_folder = r"/PBshare/SEU-ALLEN/Users/KaifengChen/1891/seg"
     crop_swc_folder(manual_swc_folder, result_swc_folder, crop_tif_folder, result_tif_folder, seg_folder)
+
+    mip_output_folder = r"/PBshare/SEU-ALLEN/Users/KaifengChen/1891/mip"
+    # mip_images(result_tif_folder, seg_folder, mip_output_folder)
