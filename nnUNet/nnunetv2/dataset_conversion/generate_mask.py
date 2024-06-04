@@ -226,7 +226,7 @@ def sort_swc(img_path, swc_path, soma_num=-1, out_path="", v3d_path=r"/home/kfch
         out_path, check_res = check_soma(swc_path, out_path, soma_x, soma_y, soma_z)
         if(check_res) == True:
             folder_path, file_name = os.path.split(swc_path)
-            file_name = str(file_name).split("_")[0]
+            file_name = file_name[:-4]
             soma_marker_path = os.path.join(folder_path, file_name + ".marker")
             line = "%s, %s, %s, 0.000, 1, , , 255,0,0\n" % (soma_x, soma_y, soma_z)
             file_handle = open(soma_marker_path, mode="a")

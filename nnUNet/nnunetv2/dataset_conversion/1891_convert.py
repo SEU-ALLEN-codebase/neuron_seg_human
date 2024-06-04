@@ -104,6 +104,13 @@ def generate_mask_from_swc(swc_file, img_file, seg_file):
 def crop_swc_file(swc_file, new_id, origin_swc_folder, result_swc_folder, crop_tif_folder, result_tif_folder, seg_folder):
     if not swc_file.endswith(".swc"):
         return
+    new_swc_name = new_seg_name = f"mb1891_{new_id:04}"
+    new_tif_name = f"mb1891_{new_id:04}_0000"
+
+    if(os.path.exists(os.path.join(result_swc_folder, new_swc_name + ".swc")) and \
+       os.path.exists(os.path.join(result_tif_folder, new_tif_name + ".tif")) and \
+       os.path.exists(os.path.join(seg_folder, new_seg_name + ".tif"))):
+        return
     brain_name, soma_x, soma_y, soma_z = swc_file.split("_")[1], swc_file.split("_")[3], swc_file.split("_")[5], \
     swc_file.split("_")[7][:-4]
     brain_name, soma_x, soma_y, soma_z = int(brain_name), int(soma_x), int(soma_y), int(soma_z)
@@ -111,25 +118,26 @@ def crop_swc_file(swc_file, new_id, origin_swc_folder, result_swc_folder, crop_t
     if (tif_file is None):
         return
 
-    # print(tif_file)
-    tif_x, tif_y, tif_z = tif_file.split("_")[3], tif_file.split("_")[5], tif_file.split("_")[7][:-4]
-    tif_x, tif_y, tif_z = int(tif_x), int(tif_y), int(tif_z)
-    crop_swc_points(os.path.join(origin_swc_folder, swc_file), result_swc_folder, tif_x, tif_y, tif_z)
+    if(not os.path.exists(os.path.join(result_swc_folder, new_swc_name + ".swc"))):
+        # print(tif_file)
+        tif_x, tif_y, tif_z = tif_file.split("_")[3], tif_file.split("_")[5], tif_file.split("_")[7][:-4]
+        tif_x, tif_y, tif_z = int(tif_x), int(tif_y), int(tif_z)
+        crop_swc_points(os.path.join(origin_swc_folder, swc_file), result_swc_folder, tif_x, tif_y, tif_z)
 
-    new_swc_name = new_seg_name = f"mb1891_{new_id:04}"
-    new_tif_name = f"mb1891_{new_id:04}_0000"
-    os.rename(os.path.join(result_swc_folder, os.path.basename(swc_file)),
-              os.path.join(result_swc_folder, new_swc_name + ".swc"))
+        os.rename(os.path.join(result_swc_folder, os.path.basename(swc_file)),
+                  os.path.join(result_swc_folder, new_swc_name + ".swc"))
 
-    # shutil.copy(os.path.join(crop_tif_folder, str(brain_name), tif_file), os.path.join(result_tif_folder, new_tif_name + ".tif"))
-    img = tifffile.imread(os.path.join(crop_tif_folder, str(brain_name), tif_file))
-    # to 0-255
-    img = (img - img.min()) / (img.max() - img.min()) * 255
-    tifffile.imwrite(os.path.join(result_tif_folder, new_tif_name + ".tif"), img.astype("uint8"))
+    if(not os.path.exists(os.path.join(result_tif_folder, new_tif_name + ".tif"))):
+        # shutil.copy(os.path.join(crop_tif_folder, str(brain_name), tif_file), os.path.join(result_tif_folder, new_tif_name + ".tif"))
+        img = tifffile.imread(os.path.join(crop_tif_folder, str(brain_name), tif_file))
+        # to 0-255
+        img = (img - img.min()) / (img.max() - img.min()) * 255
+        tifffile.imwrite(os.path.join(result_tif_folder, new_tif_name + ".tif"), img.astype("uint8"))
 
-    generate_mask_from_swc(os.path.join(result_swc_folder, new_swc_name + ".swc"),
-                           os.path.join(result_tif_folder, new_tif_name + ".tif"),
-                           os.path.join(seg_folder, new_seg_name + ".tif"))
+    if(not os.path.exists(os.path.join(seg_folder, new_seg_name + ".tif"))):
+        generate_mask_from_swc(os.path.join(result_swc_folder, new_swc_name + ".swc"),
+                               os.path.join(result_tif_folder, new_tif_name + ".tif"),
+                               os.path.join(seg_folder, new_seg_name + ".tif"))
 
 
 def crop_swc_folder(origin_swc_folder, result_swc_folder, crop_tif_folder, result_tif_folder, seg_folder):
@@ -153,7 +161,7 @@ def crop_swc_folder(origin_swc_folder, result_swc_folder, crop_tif_folder, resul
     process_bar = tqdm(total=len(swc_files))
 
     # 使用 ThreadPoolExecutor 来并发处理文件
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    with ThreadPoolExecutor(max_workers=12) as executor:
         # 创建一个字典来保存每个提交的任务的future
         future_to_file = {
             executor.submit(crop_swc_file, swc_file, new_id, origin_swc_folder, result_swc_folder, crop_tif_folder,
