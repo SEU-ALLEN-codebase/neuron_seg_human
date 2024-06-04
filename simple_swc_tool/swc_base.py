@@ -61,7 +61,21 @@ class swcPoint:
         file_handle.writelines(line)
         file_handle.close()
 
+
+
+
 class swcP_list:
     def __init__(self):
         self.p = []
         self.count = 0
+
+    def prune_point(self, p_id):
+        prune_queue = []
+        prune_queue.append(p_id)
+
+        while len(prune_queue) > 0:
+            p = prune_queue.pop(0)
+            self.p[p].pruned = True
+            for s in self.p[p].s:
+                if not self.p[s].pruned:
+                    prune_queue.append(s)

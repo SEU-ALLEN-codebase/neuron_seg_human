@@ -17,6 +17,40 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import pandas as pd
 
+def flip_swc(img_path, swc_path, out_path=""):
+    if (not out_path):
+        out_path = swc_path[0:-4] + "_flip.swc"
+    if (os.path.exists(out_path)):
+        """debug mode off"""
+        # return out_path
+        os.remove(out_path)
+
+    img = file_io.load_image(img_path)
+    y_limit = img.shape[1]
+
+    with open(swc_path, 'r') as f:
+        lines = f.readlines()
+    res_lines = []
+    for line in lines:
+        if (line[0] == '#'): continue
+        temp_line = line.split()
+        temp_line[2] = str(temp_line[2])
+        temp_line[3] = str(y_limit - float(temp_line[3]))
+        temp_line[4] = str(temp_line[4])
+        temp_line[5] = str(temp_line[5])
+        res_line = "%s %s %s %s %s %s %s\n" % (
+            temp_line[0], temp_line[1], temp_line[2],
+            temp_line[3],
+            temp_line[4], temp_line[5], temp_line[6]
+        )
+        res_lines.append(res_line)
+
+    file_handle = open(out_path, mode="a")
+    file_handle.writelines(res_lines)
+    file_handle.close()
+
+    return out_path
+
 def flip_and_resize_swc(img_path, swc_path, scale_factors, pad_width, out_path=""):
     if (not out_path):
         out_path = swc_path[0:-4] + "_flip.swc"
