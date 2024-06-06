@@ -34,6 +34,7 @@ from simple_swc_tool.swc_io import read_swc, write_swc
 from scipy import ndimage
 # from nnunetv2.training.loss.fastanison import anisodiff3
 import pandas as pd
+from pylib.file_io import load_image
 
 pool_num = 16
 
@@ -1312,25 +1313,32 @@ def rename_muti_soma_markers(muti_soma_marker_folder):
             os.rename(os.path.join(muti_soma_marker_folder, file_name),
                       os.path.join(muti_soma_marker_folder, file_name.replace('v3draw.marker', 'marker')))
 
+def downsample_img(img_path, downsample_img_path):
+    if(img_path.endswith('.tif') or img_path.endswith('.tiff')):
+        img = tifffile.imread(img_path).astype("uint8")
+    elif(img_path.endswith('.v3draw')):
+        img = pylib.file_io.load_image(img_path, False)[0].astype("uint8")
+    else:
+        print("error")
+
+def pridicting(pri_source_dir, pri_output_dir, pri_model_id, prefix="v3draw"):
+    pri_source_downsample_dir = os.path.join(pri_source_dir, "downsample")
+    pri_source_img_files = [f for f in os.listdir(pri_source_dir) if f.endswith(prefix)]
+    for pri_source_img_file in pri_source_img_files:
+        pri_source_img_path = os.path.join(pri_source_dir, pri_source_img_file)
+        pri_source_downsample_img_path = os.path.join(pri_source_downsample_dir, pri_source_img_file)
+        pri_output_img_path = os.path.join(pri_output_dir, pri_source_img_file)
+        if (not os.path.exists(pri_source_downsample_img_path)):
+            downsample_img(pri_source_img_path, pri_source_downsample_img_path)
+        predict_img(pri_source_downsample_img_path, pri_output_img_path, pri_model_id)
+    pass
 
 if __name__ == '__main__':
-    # temp_prepossessing()
-    # rename_muti_soma_markers(muti_soma_marker_folder_path)
+    pri_model_id = 167
+    pri_source_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015"
+    pri_output_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015_result"
+    pridicting(pri_source_dir, pri_output_dir, pri_model_id)
 
     # prepossessing()
-    # # folder1 = r"E:\tracing_ws\10847\TEST10K7\tif"
-    # # folder2 = r"E:\tracing_ws\10847\TEST10K1\tif"
-    # # out_folder = r"E:\tracing_ws\10847\TEST10K7\compare"
-    # # compare_tif(folder1, folder2, out_folder)
     # tracing()
-    postprocessing()
-
-    # num = 0
-    # file_names = os.listdir(muti_soma_marker_folder_path)
-    # for file_name in file_names:
-    #     v3dswc_path = os.path.join(v3dswc_folder_path, os.path.splitext(file_name)[0] + '.swc')
-    #     if(v3dswc_path and os.path.exists(v3dswc_path)):
-    #         num += 1
-    #         # copy
-    #         shutil.copy(os.path.join(muti_soma_marker_folder_path, file_name), os.path.join(muti_soma_marker_folder_path, file_name.replace('v3draw.marker', 'marker')))
-    # print(num)
+    # postprocessing()
