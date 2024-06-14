@@ -57,7 +57,7 @@ def crop_swc_points(swc_file, result_swc_folder, offset_x, offset_y, offset_z, x
     for point in point_l.p:
         point.x = x_shape - (point.x - offset_x + x_shape / 2)
         point.y = point.y - offset_y + y_shape / 2
-        point.z = point.z - offset_z + z_shape / 2
+        point.z = z_shape - (point.z - offset_z + z_shape / 2)
 
         if(point.x < 0 or point.x >= x_shape or point.y < 0 or point.y >= y_shape or point.z < 0 or point.z >= z_shape):
             point_l.prune_point(point.n)
@@ -87,6 +87,8 @@ def generate_mask_from_swc(swc_file, img_file, seg_file):
     mask_path2 = generate_mask.or_img(mask_path, ano_path2)
     #
     dust_path = generate_mask.dust_img(mask_path2, 3, target_lab_path)
+    dust = tifffile.imread(dust_path)
+    tifffile.imwrite(dust_path, dust.astype('uint8'), compression='zlib')
 
     if(os.path.exists(flip_path)):os.remove(flip_path)
     if (os.path.exists(sort_path)): os.remove(sort_path)
@@ -132,7 +134,7 @@ def crop_swc_file(swc_file, new_id, origin_swc_folder, result_swc_folder, crop_t
         img = tifffile.imread(os.path.join(crop_tif_folder, str(brain_name), tif_file))
         # to 0-255
         img = (img - img.min()) / (img.max() - img.min()) * 255
-        tifffile.imwrite(os.path.join(result_tif_folder, new_tif_name + ".tif"), img.astype("uint8"))
+        tifffile.imwrite(os.path.join(result_tif_folder, new_tif_name + ".tif"), img.astype('uint8'))
 
     if(not os.path.exists(os.path.join(seg_folder, new_seg_name + ".tif"))):
         generate_mask_from_swc(os.path.join(result_swc_folder, new_swc_name + ".swc"),
@@ -211,6 +213,16 @@ def mip_images(image_folder, seg_folder, output_folder):
         combined_image.save(os.path.join(output_folder, f'combined_{img_file}'))
 
 
+# 随机分测试集和训练集
+def split_train_test(source_folder, train_folder, test_folder, train_ratio=0.8):
+    tif_files = sorted(os.listdir(source_folder))
+    for tif_file in tif_files:
+        if tif_file.endswith(".tif"):
+            if np.random.rand() < train_ratio:
+                shutil.copy(os.path.join(source_folder, tif_file), os.path.join(train_folder, tif_file))
+            else:
+                shutil.copy(os.path.join(source_folder, tif_file), os.path.join(test_folder, tif_file))
+
 
 if __name__ == '__main__':
     manual_swc_folder = r"/PBshare/SEU-ALLEN/Users/KaifengChen/1891/refined_swc"
@@ -224,3 +236,9 @@ if __name__ == '__main__':
 
     mip_output_folder = r"/PBshare/SEU-ALLEN/Users/KaifengChen/1891/mip"
     # mip_images(result_tif_folder, seg_folder, mip_output_folder)
+
+    train_dir = "/data/kfchen/nnUNet/nnUNet_raw/Dataset401_mb1891/imagesTr"
+    test_dir = "/data/kfchen/nnUNet/nnUNet_raw/Dataset401_mb1891/imagesTs"
+    source_dir = "/data/kfchen/nnUNet/nnUNet_raw/Dataset401_mb1891/tif"
+    split_train_test(source_dir, train_dir, test_dir, train_ratio=0.8)
+
