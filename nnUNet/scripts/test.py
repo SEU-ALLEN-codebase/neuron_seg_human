@@ -65,8 +65,8 @@ elif (sys.platform == "linux"):
 # pred_folder_path = os.path.join(pred_path, "3d_cascade_fullres")
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
-data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset102_human_brain_test500"
-result_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/result500_fold0_source"
+data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset169_hb_10k"
+result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/validation"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
@@ -1143,7 +1143,7 @@ def to_v3dswc_file(file_name, swc_folder, v3dswc_folder):
     # print(full_name)
     df = pd.read_csv(name_mapping_path)
     try:
-        img_size = df[df['full_name'] == full_name]['img_size'].values[0]
+        img_size = df[df['full_name'] == int(full_name)]['img_size'].values[0]
     except:
         img_size = df[df['full_name'].str.split('_').str[0] == full_name.split("_")[0]]['img_size'].values[0]
     # print(img_size)
@@ -1153,7 +1153,7 @@ def to_v3dswc_file(file_name, swc_folder, v3dswc_folder):
     x_limit, y_limit, z_limit = "".join(filter(str.isdigit, x_limit)), \
         "".join(filter(str.isdigit, y_limit)), \
         "".join(filter(str.isdigit, z_limit))
-    x_limit, y_limit, z_limit = int(x_limit), int(y_limit), int(z_limit)
+    x_limit, y_limit, z_limit = int(x_limit) * 2, int(y_limit) * 2, int(z_limit) * 2
     # print(x_limit, y_limit, z_limit)
 
     # except:
@@ -1247,7 +1247,7 @@ def prepossessing():
     # #
     # # # ###########adf_folder(tif_folder_path, adf_folder_path)
     # #
-    check_fp_ratio_folder(tif_folder_path)
+    # check_fp_ratio_folder(tif_folder_path)
     # time.sleep(100000)
     #
     skel_tif_folder(tif_folder_path, skel_folder_path)
@@ -1334,11 +1334,11 @@ def pridicting(pri_source_dir, pri_output_dir, pri_model_id, prefix="v3draw"):
     pass
 
 if __name__ == '__main__':
-    pri_model_id = 167
-    pri_source_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015"
-    pri_output_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015_result"
-    pridicting(pri_source_dir, pri_output_dir, pri_model_id)
+    # pri_model_id = 167
+    # pri_source_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015"
+    # pri_output_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015_result"
+    # pridicting(pri_source_dir, pri_output_dir, pri_model_id)
 
-    # prepossessing()
-    # tracing()
-    # postprocessing()
+    prepossessing()
+    tracing()
+    postprocessing()
