@@ -1,0 +1,12 @@
+name:llm_neuron_seg
+channels:
+  - nvidia
+  - defaults
+dependencies:
+  - pip:
+      - scikit-learn
+      - pandas
+      - jupyterlab
+      - notebook
+      - matplotlib
+ 
