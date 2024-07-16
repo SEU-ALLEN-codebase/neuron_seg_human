@@ -89,7 +89,6 @@ def main():
     input_img = "image.tif"
     output_radius_swc = "output_radius.swc"
     output_mask_img = "output_image.tif"
-    # dimensions = "100 100 100"  # 假设的图像维度，例如: 宽度、高度、深度
 
     #print("Sorting SWC file...")
     v3d_test.sort_swc(input_swc, output_sorted_swc) 
