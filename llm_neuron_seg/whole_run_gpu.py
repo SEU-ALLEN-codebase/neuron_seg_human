@@ -872,8 +872,8 @@ def trace_app1_with_soma_file(file_name, skelwithsoma_folder, somamarker_folder,
 
     try:
         if (sys.platform == "linux"):
-            cmd = "???"
-            # cmd = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x vn2 -f app1 -i {skelwithsoma_path} -o {swc_path} -p {somamarker_path} 0 AUTO 1 {b_RadiusFrom2D} {gsdt} 1 5 {resample} 0 0'
+            #cmd = "???"
+            cmd = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x vn2 -f app1 -i {skelwithsoma_path} -o {swc_path} -p {somamarker_path} 0 AUTO 1 {b_RadiusFrom2D} {gsdt} 1 5 {resample} 0 0'
             cmd = process_path(cmd)
             subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True)
         else:
