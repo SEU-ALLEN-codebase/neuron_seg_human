@@ -7,3 +7,4 @@ mode:
 ###使用前先进行通路测试
 --后进行txt文本/code分离
 --JSON解析
+--分离llm account配置
