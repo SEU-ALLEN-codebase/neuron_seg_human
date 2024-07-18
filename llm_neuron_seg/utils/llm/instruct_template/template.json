@@ -1,0 +1,53 @@
+
+{
+    
+        "get_ini_task":"For this neuroscience image analysis task, please develop a comprehensive solution plan. Divide your response into three distinct parts:
+        1. **Task Objectives and Function Description**
+           - Clearly describe the objectives of the task.
+           - Explain the overall function and purpose of the solution.  
+        2. **Algorithm Steps and Implementation Details**
+           - Provide a detailed list of algorithm steps.
+           - Include specific implementation details for each step.
+        
+        3. **Specific Constraints**
+           - List any constraints or requirements that must be considered.
+           - Mention any limitations or special conditions that apply to the task.
+        
+        Please structure your response with each statement as a separate bullet point under its respective section. Do not write any code; focus solely on the plan and its details.
+        ",
+        "get_step_description":"For a neuroscience image analysis task ({task_description}), please create a detailed step-by-step plan for developing a programming solution. The plan should be structured to enable a language model to generate concise code snippets for each step, which can then be compiled into a complete script. Ensure that each step is clearly defined and logically sequenced.
+
+        1. **Step-by-Step Plan**
+           - Break down the task into manageable steps.
+           - Provide a brief description of what each step entails.
+           - Mention any specific tools, libraries, or algorithms that should be used.
+        
+        2. **Summary of the Whole Code Script**
+           - Outline how the individual steps combine to form the complete solution.
+           - Highlight the key points that the final script should address.
+        
+        Please ensure the steps are detailed enough for the language model to generate accurate and efficient code snippets. Do not write the actual code; focus solely on the plan and return the step plan as a list only.
+        ",
+        "get_step_code":"I need you to act as both a human neuroscience expert and a computer vision developer. 
+        I will give you a task description along with a specific step to solve it. 
+        Your job is to provide the code script that fulfills this step using the specified tools and libraries.
+        Here is the task description: {task}
+        Here is the step-by-step plan: {step_list}
+        Here is the script of pre_steps: {pre_code}
+        Here is the current step: {current_step}
+        Please prioritize using the following code tools and libraries if they fit the step requirements: {code_tools}
+        Provide only the code script for this step and return the script only.
+        ",
+
+        
+    
+}
+
+{
+    "get_ini_task": "For this neuroscience image analysis task, please develop a comprehensive solution plan. Divide your response into three distinct parts:\n1. **Task Objectives and Function Description**\n   - Clearly describe the objectives of the task.\n   - Explain the overall function and purpose of the solution.\n\n2. **Algorithm Steps and Implementation Details**\n   - Provide a detailed list of algorithm steps.\n   - Include specific implementation details for each step.\n\n3. **Specific Constraints**\n   - List any constraints or requirements that must be considered.\n   - Mention any limitations or special conditions that apply to the task.\n\nPlease structure your response with each statement as a separate bullet point under its respective section. Do not write any code; focus solely on the plan and its details.",
+    
+    "get_step_description": "For a neuroscience image analysis task ({task_description}), please create a detailed step-by-step plan for developing a programming solution. The plan should be structured to enable a language model to generate concise code snippets for each step, which can then be compiled into a complete script. Ensure that each step is clearly defined and logically sequenced.\n\n1. **Step-by-Step Plan**\n   - Break down the task into manageable steps.\n   - Provide a brief description of what each step entails.\n   - Mention any specific tools, libraries, or algorithms that should be used.\n\n2. **Summary of the Whole Code Script**\n   - Outline how the individual steps combine to form the complete solution.\n   - Highlight the key points that the final script should address.\n\nPlease ensure the steps are detailed enough for the language model to generate accurate and efficient code snippets. Do not write the actual code; focus solely on the plan and return the step plan as a list only.",
+    
+    "get_step_code": "I need you to act as both a human neuroscience expert and a computer vision developer. I will give you a task description along with a specific step to solve it. Your job is to provide the code script that fulfills this step using the specified tools and libraries.\nHere is the task description: {task}\nHere is the step-by-step plan: {step_list}\nHere is the script of pre_steps: {pre_code}\nHere is the current step: {current_step}\nPlease prioritize using the following code tools and libraries if they fit the step requirements: {code_tools}\nProvide only the whole code script and return the script only."
+}
+
