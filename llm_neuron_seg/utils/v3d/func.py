@@ -73,10 +73,10 @@ class Vaa3DPlugin:
             somamarker_path = "NULL"
 
         if sys.platform.startswith('linux'):
-            cmd_args = [self.v3d_path, '-x', 'vn2', '-f', 'app1', '-i', skelwithsoma_path, '-o', swc_path, '-p', somamarker_path, '0', 'AUTO', '1', str(b_RadiusFrom2D), str(gsdt), '1', '5', str(resample), '0', '0']
+            cmd_args = [self.v3d_path, '-x', 'vn2', '-f', 'app2', '-i', skelwithsoma_path, '-o', swc_path, '-p', somamarker_path, '0', 'AUTO', '1', str(b_RadiusFrom2D), str(gsdt), '1', '5', str(resample), '0', '0']
         else:
                 #vn2_path = 'D:/tracing_ws/vn2.dll'
-            cmd_args = [self.v3d_path, "/x", "vn2", "/f", "app1", "/i", skelwithsoma_path, "/o", swc_path, "/p", somamarker_path, "0", "10", "1"]
+            cmd_args = [self.v3d_path, "/x", "vn2", "/f", "app2", "/i", skelwithsoma_path, "/o", swc_path, "/p", somamarker_path, "0", "10", "1"]
         self.run_command(cmd_args)
 
 
