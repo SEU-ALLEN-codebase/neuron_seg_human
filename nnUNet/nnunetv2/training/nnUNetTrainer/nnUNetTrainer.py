@@ -147,7 +147,7 @@ class nnUNetTrainer(object):
 
         self.num_iterations_per_epoch = 250
         self.num_val_iterations_per_epoch = 10
-        self.num_epochs = 250
+        self.num_epochs = 250 + 250
         self.current_epoch = 0
         self.enable_deep_supervision = True
 

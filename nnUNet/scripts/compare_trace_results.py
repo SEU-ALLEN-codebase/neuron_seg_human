@@ -13,6 +13,11 @@ from tqdm import tqdm
 
 from simple_swc_tool.swc_io import read_swc
 
+from nnUNet.scripts.mip import get_mip_swc, get_mip
+from nnUNet.nnunetv2.dataset_conversion.generate_nnunet_dataset import augment_gamma
+import tifffile
+import numpy as np
+
 
 def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\vaa3d_msvc.exe'):
     cmd_str = f'xvfb-run -a -s "-screen 0 640x480x16" {vaa3d} -x global_neuron_feature -f compute_feature -i "{swc_file}"'
@@ -86,8 +91,8 @@ def plot_violin(df_gt, df_pred, violin_png):
     fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows), sharey=False)
     axes = axes.flatten()
 
-    df_gt['Type'] = 'noptls'  # "GT"
-    df_pred['Type'] = 'ptls'  # "Pred"
+    df_gt['Type'] = 'manual traced'  # "GT"
+    df_pred['Type'] = 'auto traced'  # "Pred"
 
     df = pd.concat([df_gt, df_pred], axis=0)
     df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_name, var_name='Feature', value_name='Value')
@@ -174,24 +179,40 @@ def l_measure_gt_and_pred(gt_dir, pred_dir, gt_csv, pred_csv, violin_png,
     progress_bar.close()
     # print(features_all_gt)
     df_gt = pd.DataFrame(features_all_gt)
+    df_gt = df_gt.sort_values(by='ID')
     df_gt.to_csv(gt_csv, float_format='%g', index=False, mode='a', header=False)
 
     df_pred = pd.DataFrame(features_all_pred)
+    df_pred = df_pred.sort_values(by='ID')
     df_pred.to_csv(pred_csv, float_format='%g', index=False, mode='a', header=False)
     progress_bar.close()
 
     plot_violin(df_gt, df_pred, violin_png)
 
 def compare_l_measure():
-    gt_dir = r"/data/kfchen/trace_ws/gt_seg_downsample/v3dswc"
+    # gt_dir = r"/data/kfchen/trace_ws/gt_seg_downsample/v3dswc" # gt segment traced
+    # gt_dir = r"/data/kfchen/trace_ws/to_gu/lab/2_sort"  # manual traced()sorted
+    # gt_dir = r"/data/kfchen/trace_ws/to_gu/origin_swc" # manual traced
+
+    # gt_dir = r"/data/kfchen/trace_ws/to_gu/lab/2_flip_after_sort"
+    # gt_dir = r"/data/kfchen/trace_ws/neurom_ws/new_sort/pruned_swc"
+    gt_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_GS"
+
+
+
     # gt_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
     # pred_dir = r"/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/10847_auto_v1.4_12k/swc"
     # gt_dir = (r"/data/kfchen/trace_ws/result500_164_500_aug_noptls/v3dswc")
-    pred_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
+    # pred_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
+    # pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/validation_traced/pruned_v3dswc"
+    pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_Auto"
 
-    gt_csv = r"/data/kfchen/nnUNet/gt_swc.csv"
-    pred_csv = r"/data/kfchen/nnUNet/pred_swc.csv"
-    violin_png = r"/data/kfchen/nnUNet/violin.png"
+    # gt_csv = r"/data/kfchen/nnUNet/gt_swc.csv"
+    # pred_csv = r"/data/kfchen/nnUNet/pred_swc.csv"
+    # violin_png = r"/data/kfchen/nnUNet/violin.png"
+    gt_csv = pred_dir.replace('unified_Auto', 'gt_swc.csv')
+    pred_csv = pred_dir.replace('unified_Auto', 'pred_swc.csv')
+    violin_png = pred_dir.replace('unified_Auto', 'violin_man_nnunet.png')
     v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
 
     if (os.path.exists(pred_csv)):
@@ -264,7 +285,42 @@ def compare_tip_to_soma(traced_dir1 = r"/data/kfchen/trace_ws/result500_new_resi
 
 
 if __name__ == '__main__':
-    compare_l_measure()
+    # compare_l_measure()
     # compare_tip_to_soma()
+
+    img_dir = r"/data/kfchen/trace_ws/to_gu/img"
+    # swc_dir1 = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_GS"
+    # swc_dir2 = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_Auto"
+    swc_dir1 = r"/data/kfchen/trace_ws/to_gu/new_sort_lab/2_sort"
+    swc_dir2 = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/validation_traced/v3dswc"
+
+    mip_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/concat_mip"
+    swc_files1 = os.listdir(swc_dir1)
+    swc_files2 = os.listdir(swc_dir2)
+
+    shared_ids = list(set(swc_files1) & set(swc_files2))
+
+    for id in shared_ids:
+        if("3902" not in id):
+            continue
+        swc1 = os.path.join(swc_dir1, id)
+        swc2 = os.path.join(swc_dir2, id)
+        img_file= os.path.join(img_dir, os.path.split(swc1)[-1].replace('swc', 'tif'))
+        mip_file = os.path.join(mip_dir, os.path.split(swc1)[-1].replace('swc', 'png'))
+
+        img = tifffile.imread(img_file)
+        img = augment_gamma(img)
+        img_mip = get_mip(img)
+        img_mip = np.array([img_mip, img_mip, img_mip]).transpose(1, 2, 0)
+        swc1_mip = get_mip_swc(swc1, np.flip(img, axis=1))
+        swc2_mip = get_mip_swc(swc2, img)
+        # print(img_mip.shape, swc1_mip.shape, swc2_mip.shape)
+
+        # concat_img = np.concatenate((img_mip, swc1_mip, swc2_mip), axis=1)
+        # tifffile.imsave(mip_file, concat_img)
+        tifffile.imsave(mip_file + "_img.png", img_mip)
+        tifffile.imsave(mip_file + "_swc1.png", swc1_mip)
+        tifffile.imsave(mip_file + "_swc2.png", swc2_mip)
+
     pass
 

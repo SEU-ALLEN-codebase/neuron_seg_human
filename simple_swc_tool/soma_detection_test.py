@@ -1,3 +1,8 @@
+# from simple_swc_tool.soma_detection import simple_get_soma
+import os
+import tifffile
+import numpy as np
+import cv2
 import os
 import sys
 import subprocess
@@ -54,6 +59,7 @@ def simple_get_soma(img, img_path, temp_path=r"/home/kfchen/temp_tif", v3d_path=
         return None
     gsdt = tifffile.imread(out_tmp).astype(np.uint8)
     gsdt = np.flip(gsdt, axis=1)
+    gsdt_0 = gsdt.copy()
 
     max_gsdt = np.max(gsdt)
     gsdt[gsdt <= max_gsdt * 0.95] = 0
@@ -66,4 +72,22 @@ def simple_get_soma(img, img_path, temp_path=r"/home/kfchen/temp_tif", v3d_path=
     if (os.path.exists(in_tmp)): os.remove(in_tmp)
     del out_tmp, in_tmp
 
-    return centroid
+    return centroid, gsdt, gsdt_0
+
+tif_dir = r'/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/label/to_gu/img'
+img_files = [os.path.join(tif_dir, f) for f in os.listdir(tif_dir) if f.endswith('.tif')]
+
+for img_file in img_files:
+    img = tifffile.imread(img_file)
+    soma, gsdt, gsdt_0 = simple_get_soma(img, img_file)
+    gsdt = np.max(gsdt, axis=0)
+    gsdt = (gsdt - np.min(gsdt)) / (np.max(gsdt) - np.min(gsdt)) * 255
+    gsdt_0 = np.max(gsdt_0, axis=0)
+    gsdt_0 = (gsdt_0 - np.min(gsdt_0)) / (np.max(gsdt_0) - np.min(gsdt_0)) * 255
+    print(soma)
+
+    mip = np.max(img, axis=0)
+    mip2 = cv2.circle(mip, (int(soma[2]), int(soma[1])), 3, (0, 0, 255), -1)
+    # concat
+    mip = np.concatenate((mip, mip2, gsdt, gsdt_0), axis=1)
+    cv2.imwrite(img_file.replace('.tif', '_soma.png'), mip)

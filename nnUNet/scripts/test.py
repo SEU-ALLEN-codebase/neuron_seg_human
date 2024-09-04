@@ -13,7 +13,7 @@ import scipy
 import skimage.morphology
 import tifffile
 from scipy.ndimage import binary_dilation
-from scipy.ndimage import label, find_objects
+    from scipy.ndimage import label, find_objects
 from skimage.measure import regionprops, label
 from skimage.morphology import ball
 from skimage.morphology import skeletonize_3d
@@ -65,8 +65,8 @@ elif (sys.platform == "linux"):
 # pred_folder_path = os.path.join(pred_path, "3d_cascade_fullres")
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
-data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset169_hb_10k"
-result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/validation"
+data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset170_14k_hb_neuron"
+result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/14k_seg_result"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
@@ -168,8 +168,8 @@ def uint8_tif_file(file_name, tif_folder_path):
     img = tifffile.imread(file_path)
     # normalize to 0-255
     img = (img - img.min()) / (img.max() - img.min()) * 255
-    img = img.astype(np.uint8)
-    tifffile.imwrite(file_path, img)
+    img = img.astype("uint8")
+    tifffile.imwrite(file_path, img, compression='zlib')
 
 
 def uint8_tif_folder(tif_folder):
@@ -185,10 +185,10 @@ def skel_tif_file(file_name, tif_folder, skel_folder):
     tif_path = os.path.join(tif_folder, file_name)
     skel_path = os.path.join(skel_folder, os.path.splitext(file_name)[0] + '.tif')
 
-    data = tifffile.imread(tif_path).astype(np.uint8)
-    skel = skeletonize_3d(data).astype(np.uint8)
-    # skel = binary_dilation(skel, iterations=1).astype(np.uint8)
-    tifffile.imwrite(skel_path, skel * 255)
+    data = tifffile.imread(tif_path).astype("uint8")
+    skel = skeletonize_3d(data).astype("uint8")
+    # skel = binary_dilation(skel, iterations=1).astype("uint8")
+    tifffile.imwrite(skel_path, skel * 255, compression='zlib')
 
 
 def skel_tif_folder(tif_folder, skel_folder):
@@ -235,7 +235,7 @@ def dusting(img):
         return img
     labeled_image = cc3d.connected_components(img, connectivity=6)
     largest_label = np.argmax(np.bincount(labeled_image.flat)[1:]) + 1
-    largest_component_binary = ((labeled_image == largest_label)).astype(np.uint8)
+    largest_component_binary = ((labeled_image == largest_label)).astype("uint8")
     return largest_component_binary
 
 
@@ -279,13 +279,13 @@ def opening_get_soma_region(soma_region):
     max_rate = 10
     for i in range(max_rate):
         spherical_selem = ball(radius * (max_rate - i) / 10 / 2)
-        # soma_region_res = binary_opening(soma_region, spherical_selem).astype(np.uint8)
-        soma_region_res = scipy.ndimage.binary_opening(soma_region, spherical_selem).astype(np.uint8)
+        # soma_region_res = binary_opening(soma_region, spherical_selem).astype("uint8")
+        soma_region_res = scipy.ndimage.binary_opening(soma_region, spherical_selem).astype("uint8")
         if (soma_region_res.sum() == 0):
             continue
         soma_region = soma_region_res
 
-    # soma_region = binary_erosion(soma_region, spherical_selem).astype(np.uint8)
+    # soma_region = binary_erosion(soma_region, spherical_selem).astype("uint8")
     del spherical_selem, radius, soma_region_res
     if (soma_region.sum() == 0):
         soma_region = soma_region_copy
@@ -332,7 +332,7 @@ def zero_outside_sphere(image, center, radius=25):
     distance_from_center = np.sqrt((x - center[2]) ** 2 + (y - center[1]) ** 2 + (z - center[0]) ** 2)
     image[distance_from_center > radius] = 0
 
-    # tifffile.imwrite(r"E:\tracing_ws\10847\TEST10K5\tif\222.tif", image)
+    # tifffile.imwrite(r"E:\tracing_ws\10847\TEST10K5\tif\222.tif", image, compression='zlib')
 
     return image
 
@@ -354,8 +354,8 @@ def get_main_soma_region_in_msoma_from_gsdt(marker_path, gsdt, pred, in_tmp, out
     gsdt[gsdt <= max_gsdt / 2] = 0
     gsdt[gsdt > max_gsdt / 2] = 1
 
-    gsdt = binary_dilation(gsdt, iterations=5).astype(np.uint8)
-    soma_region = np.logical_and(pred, gsdt).astype(np.uint8)
+    gsdt = binary_dilation(gsdt, iterations=5).astype("uint8")
+    soma_region = np.logical_and(pred, gsdt).astype("uint8")
     soma_region = dusting(soma_region)
     del pred, gsdt, max_gsdt
 
@@ -397,8 +397,8 @@ def get_msoma_region(gsdt, pred, marker_path):
     gsdt[gsdt <= max_gsdt / 2] = 0
     gsdt[gsdt > max_gsdt / 2] = 1
 
-    gsdt = binary_dilation(gsdt, iterations=5).astype(np.uint8)
-    soma_region = np.logical_and(pred, gsdt).astype(np.uint8)
+    gsdt = binary_dilation(gsdt, iterations=5).astype("uint8")
+    soma_region = np.logical_and(pred, gsdt).astype("uint8")
     del pred, gsdt, max_gsdt
 
     min_size = 100
@@ -422,7 +422,7 @@ def get_msoma_region(gsdt, pred, marker_path):
         obj_img = restore_original_size(obj_img, original_shape, min_coords)
 
         while (np.sum(obj_img) < 100):
-            obj_img = binary_dilation(obj_img, iterations=1).astype(np.uint8)
+            obj_img = binary_dilation(obj_img, iterations=1).astype("uint8")
 
         result_img += obj_img
         del obj_img
@@ -440,7 +440,7 @@ def get_msoma_region(gsdt, pred, marker_path):
         z, y, x = np.ogrid[:ball.shape[0], :ball.shape[1], :ball.shape[2]]
         distance_from_center = np.sqrt((x - int(soma_x)) ** 2 + (y - int(soma_y)) ** 2 + (z - int(soma_z)) ** 2)
         ball[distance_from_center <= 5] = 1
-        result_img = np.logical_or(result_img, ball).astype(np.uint8)
+        result_img = np.logical_or(result_img, ball).astype("uint8")
 
     # binary
     result_img = np.where(result_img > 0, 1, 0)
@@ -461,17 +461,17 @@ def get_soma_region(img_path, marker_path=None):
         cmd = f'{v3d_path} /x gsdt /f gsdt /i {in_tmp} /o {out_tmp} /p 0 1 0 1.5'
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
-    pred = tifffile.imread(img_path).astype(np.uint8)
+    pred = tifffile.imread(img_path).astype("uint8")
     pred[pred <= 255 / 2] = 0
     pred[pred > 255 / 2] = 1
 
-    gsdt = tifffile.imread(out_tmp).astype(np.uint8)
+    gsdt = tifffile.imread(out_tmp).astype("uint8")
     gsdt = np.flip(gsdt, axis=1)
     if (os.path.exists(out_tmp)): os.remove(out_tmp)
     del out_tmp, in_tmp
 
     # save tif
-    # tifffile.imwrite(r"E:\tracing_ws\10847\TEST10K5\tif\111.tif", gsdt)
+    # tifffile.imwrite(r"E:\tracing_ws\10847\TEST10K5\tif\111.tif", gsdt, compression='zlib')
 
     if (marker_path and os.path.exists(marker_path)):
         # return get_main_soma_region_in_msoma(marker_path, gsdt, pred, in_tmp, out_tmp)
@@ -482,8 +482,8 @@ def get_soma_region(img_path, marker_path=None):
         gsdt[gsdt <= max_gsdt / 2] = 0
         gsdt[gsdt > max_gsdt / 2] = 1
 
-        gsdt = binary_dilation(gsdt, iterations=5).astype(np.uint8)
-        soma_region = np.logical_and(pred, gsdt).astype(np.uint8)
+        gsdt = binary_dilation(gsdt, iterations=5).astype("uint8")
+        soma_region = np.logical_and(pred, gsdt).astype("uint8")
         soma_region = dusting(soma_region)
         del pred, gsdt, max_gsdt
 
@@ -527,13 +527,13 @@ def get_soma_regions_file(file_name, tif_folder, soma_folder, muti_soma_marker_f
     if (soma_region is None):
         return
     # binary
-    soma_region = np.where(soma_region > 0, 1, 0).astype(np.uint8)
-    tifffile.imwrite(soma_region_path, soma_region * 255)
+    soma_region = np.where(soma_region > 0, 1, 0).astype("uint8")
+    tifffile.imwrite(soma_region_path, soma_region * 255, compression='zlib')
 
     if (do_mip):
         soma_region_mip = np.max(soma_region, axis=0)
         soma_region_mip_path = os.path.join(soma_mip_folder_path, os.path.splitext(file_name)[0] + '.tif')
-        tifffile.imwrite(soma_region_mip_path, soma_region_mip * 255)
+        tifffile.imwrite(soma_region_mip_path, soma_region_mip * 255, compression='zlib')
 
     del soma_region
 
@@ -594,7 +594,7 @@ def get_somamarker_file(file_name, soma_folder, somamarker_folder, muti_soma_mar
             label_soma_x, label_soma_y, label_soma_z = int(label_soma_x / 2), int(label_soma_y / 2), int(
                 label_soma_z / 2)
 
-            soma_region = tifffile.imread(soma_path).astype(np.uint8)
+            soma_region = tifffile.imread(soma_path).astype("uint8")
             labeled_img, num_objects = ndimage.label(soma_region)
 
             min_dis = 100000
@@ -629,7 +629,7 @@ def get_somamarker_file(file_name, soma_folder, somamarker_folder, muti_soma_mar
 
         return
     else:
-        soma_region = tifffile.imread(soma_path).astype(np.uint8)
+        soma_region = tifffile.imread(soma_path).astype("uint8")
         centroid = compute_centroid(soma_region)
         soma_x, soma_y, soma_z, soma_r = centroid[2], centroid[1], centroid[0], 1
         soma_y = soma_region.shape[1] - soma_y
@@ -659,12 +659,12 @@ def get_skelwithsoma_file(file_name, skel_folder, soma_folder, skelwithsoma_fold
     if (not os.path.exists(soma_path) or not os.path.exists(skel_path)):
         return
 
-    skel = tifffile.imread(skel_path).astype(np.uint8)
-    soma = tifffile.imread(soma_path).astype(np.uint8)
+    skel = tifffile.imread(skel_path).astype("uint8")
+    soma = tifffile.imread(soma_path).astype("uint8")
     skelwithsoma = (np.logical_or(skel, soma))
     # normalize to [0, 255]
-    skelwithsoma = (skelwithsoma * 255).astype(np.uint8)
-    tifffile.imwrite(skelwithsoma_path, skelwithsoma)
+    skelwithsoma = (skelwithsoma * 255).astype("uint8")
+    tifffile.imwrite(skelwithsoma_path, skelwithsoma, compression='zlib')
 
 
 def get_skelwithsoma_folder(skel_folder, soma_folder, skelwithsoma_folder):
@@ -715,9 +715,9 @@ def adf_file(file_name, tif_folder, adf_folder, num_iterations, time_step, condu
 
     # binary
     filtered_image = sitk.GetArrayFromImage(filtered_image)
-    filtered_image = np.where(filtered_image > 0, 1, 0).astype(np.uint8) * 255
+    filtered_image = np.where(filtered_image > 0, 1, 0).astype("uint8") * 255
 
-    tifffile.imwrite(adf_path, filtered_image)
+    tifffile.imwrite(adf_path, filtered_image, compression='zlib')
     # sitk.WriteImage(filtered_image, adf_path)
 
     # compare with the original image
@@ -731,7 +731,7 @@ def adf_file(file_name, tif_folder, adf_folder, num_iterations, time_step, condu
     diff_image = np.where(diff_image < 0, 1, diff_image)
     # print(f"max: {np.max(diff_image)}, min: {np.min(diff_image)}")
     # normalize to [0, 255]
-    diff_image = (diff_image / np.max(diff_image) * 255).astype(np.uint8)
+    diff_image = (diff_image / np.max(diff_image) * 255).astype("uint8")
 
     fig, axes = plt.subplots(1, 3, figsize=(8, 4))
     axes[0].imshow(np.max(original_image, axis=0), cmap='gray')
@@ -750,15 +750,15 @@ def adf_file(file_name, tif_folder, adf_folder, num_iterations, time_step, condu
 #
 #     input_image = tifffile.imread(tif_path).astype(np.float32)
 #     filtered_image = anisodiff3(input_image, niter=1, kappa=50, gamma=0.1, option=1)
-#     filtered_image = np.where(filtered_image > 0, 1, 0).astype(np.uint8) * 255
+#     filtered_image = np.where(filtered_image > 0, 1, 0).astype("uint8") * 255
 #
-#     tifffile.imwrite(adf_path, filtered_image)
+#     tifffile.imwrite(adf_path, filtered_image, compression='zlib')
 #     original_image = tifffile.imread(tif_path).astype(np.float32)
 #     filtered_image = tifffile.imread(adf_path).astype(np.float32)
 #     diff_image = original_image - filtered_image
 #     diff_image = np.where(diff_image > 0, 1, diff_image)
 #     diff_image = np.where(diff_image < 0, 1, diff_image)
-#     diff_image = (diff_image / np.max(diff_image) * 255).astype(np.uint8)
+#     diff_image = (diff_image / np.max(diff_image) * 255).astype("uint8")
 #     fig, axes = plt.subplots(1, 3, figsize=(8, 4))
 #     axes[0].imshow(np.max(original_image, axis=0), cmap='gray')
 #     axes[0].set_title(f'Original, num: {calc_connected_block_num(original_image)}')
@@ -1036,9 +1036,9 @@ def connect_to_soma_file(file_name, swc_folder, soma_folder, conn_folder):
     swc_path = os.path.join(swc_folder, os.path.splitext(file_name)[0] + '.swc')
     conn_path = os.path.join(conn_folder, os.path.splitext(file_name)[0] + '.swc')
 
-    soma_region = tifffile.imread(soma_region_path).astype(np.uint8)
+    soma_region = tifffile.imread(soma_region_path).astype("uint8")
     # soma_region = get_main_soma_region_in_msoma_from_gsdt(soma_region,,
-    soma_region = binary_dilation(soma_region, iterations=4).astype(np.uint8)
+    soma_region = binary_dilation(soma_region, iterations=4).astype("uint8")
     x_limit, y_limit, z_limit = soma_region.shape[2], soma_region.shape[1], soma_region.shape[0]
 
     point_l = read_swc(swc_path)
@@ -1054,7 +1054,7 @@ def connect_to_soma_file(file_name, swc_folder, soma_folder, conn_folder):
             del obj_img
             break
         del obj_img
-    # tifffile.imwrite(os.path.join(conn_folder, file_name+"1.tif"), soma_region.astype(np.uint8)*255)
+    # tifffile.imwrite(os.path.join(conn_folder, file_name+"1.tif"), soma_region.astype("uint8")*255, compression='zlib')
     labeled_img, num_objects = ndimage.label(soma_region)
     if (num_objects > 1):
         # soma_region = dusting(soma_region)

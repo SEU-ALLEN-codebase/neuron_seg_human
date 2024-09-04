@@ -235,7 +235,7 @@ def generate_train_data(images_dir, seg_dir, imagestr, labelstr,
         '.tif'
     )
 
-def generate_test_data(test_source, imagests, raw_info_path, mutisoma_marker_path, csv_path, generate_muti_soma=0, debug=True):
+def generate_test_data(test_source, imagests, raw_info_path, mutisoma_marker_path, csv_path, generate_muti_soma=0, debug=False):
     data = {
         'ID': [],
         'full_name': [],
@@ -247,10 +247,10 @@ def generate_test_data(test_source, imagests, raw_info_path, mutisoma_marker_pat
 
     images = get_sorted_files(test_source, suffix='.v3draw')
     ids = [int(im.split('/')[-1].split('_')[0]) for im in images]
-    gt_files = get_sorted_files("/data/kfchen/nnUNet/gt_swc", suffix='.swc')
-    gt_ids = [int(im.split('/')[-1].split('_')[0]) for im in gt_files]
-    shared_ids = list(set(ids).intersection(set(gt_ids)))
-    images = [im for im in images if int(im.split('/')[-1].split('_')[0]) in shared_ids]
+    # gt_files = get_sorted_files("/data/kfchen/nnUNet/gt_swc", suffix='.swc')
+    # gt_ids = [int(im.split('/')[-1].split('_')[0]) for im in gt_files]
+    # shared_ids = list(set(ids).intersection(set(gt_ids)))
+    # images = [im for im in images if int(im.split('/')[-1].split('_')[0]) in shared_ids]
 
     if(debug):
         images = images[:10]
@@ -261,15 +261,15 @@ def generate_test_data(test_source, imagests, raw_info_path, mutisoma_marker_pat
         progress_bar.update(1)
         target_name = f'image_{(id):03d}'
 
-        file_name = im.split('/')[-1]
-        muti_soma_marker_path = find_muti_soma_marker_file(file_name, mutisoma_marker_path)
-        if ((generate_muti_soma == 0) and (
-        not (muti_soma_marker_path is None))):  # skip the image with muti soma marker
-            print(f"Skip {im} because of {muti_soma_marker_path}")
-            continue
-        elif (generate_muti_soma == 1 and (muti_soma_marker_path)):  # skip single soma cases
-            print(f"Skip {im} because of {muti_soma_marker_path}")
-            continue
+        # file_name = im.split('/')[-1]
+        # muti_soma_marker_path = find_muti_soma_marker_file(file_name, mutisoma_marker_path)
+        # if ((generate_muti_soma == 0) and (
+        # not (muti_soma_marker_path is None))):  # skip the image with muti soma marker
+        #     print(f"Skip {im} because of {muti_soma_marker_path}")
+        #     continue
+        # elif (generate_muti_soma == 1 and (muti_soma_marker_path)):  # skip single soma cases
+        #     print(f"Skip {im} because of {muti_soma_marker_path}")
+        #     continue
 
         img_size = [1, 1, 1]
         spacing = get_spacing(im, raw_info_path)
@@ -369,12 +369,12 @@ if __name__ == '__main__':
     label_info_path = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/label/label_info.xlsx"
 
     # dataset_name = 'Dataset101_human_brain_10000_ssoma_test'
-    dataset_name = 'Dataset165_human_brain_resized_10k_ptls'
+    dataset_name = 'Dataset170_14k_hb_neuron'
     # images_dir = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/image"
     # seg_dir = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/label"
     images_dir = "/data/kfchen/trace_ws/resized_dataset2/img"
     seg_dir = "/data/kfchen/trace_ws/resized_dataset2/lab"
-    test_source = "/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw"
+    test_source = "/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw_8bit"
     imagestr = join(nnUNet_raw, dataset_name, "imagesTr")
     labelstr = join(nnUNet_raw, dataset_name, "labelsTr")
     imagests = join(nnUNet_raw, dataset_name, "imagesTs")
@@ -388,8 +388,8 @@ if __name__ == '__main__':
         os.makedirs(imagests)
 
     label_info = pd.read_excel(label_info_path)
-    generate_train_data(images_dir, seg_dir, imagestr, labelstr, mutisoma_marker_path, label_info, csv_path, generate_muti_soma=0, debug=False)
-    # generate_test_data(test_source, imagests, raw_info_path, mutisoma_marker_path, csv_path, debug=False)
+    # generate_train_data(images_dir, seg_dir, imagestr, labelstr, mutisoma_marker_path, label_info, csv_path, generate_muti_soma=0, debug=False)
+    generate_test_data(test_source, imagests, raw_info_path, mutisoma_marker_path, csv_path, debug=False)
     # copy_gt_files(gt_path, r"/data/kfchen/nnUNet/gt_swc", mutisoma_marker_path, generate_muti_soma=0, debug=False)
 
     # nnUNetv2_plan_and_preprocess -d DATASET_ID --verify_dataset_integrity
