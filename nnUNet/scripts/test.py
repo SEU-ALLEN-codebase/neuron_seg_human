@@ -13,7 +13,7 @@ import scipy
 import skimage.morphology
 import tifffile
 from scipy.ndimage import binary_dilation
-    from scipy.ndimage import label, find_objects
+from scipy.ndimage import label, find_objects
 from skimage.measure import regionprops, label
 from skimage.morphology import ball
 from skimage.morphology import skeletonize_3d
@@ -80,6 +80,7 @@ if(not os.path.exists(tif_folder_path) or len(os.listdir(tif_folder_path)) == 0)
         os.rmdir(tif_folder_path)
     shutil.copytree(result_folder_path, tif_folder_path)
 
+newest_mutisoma_markers_folder_path = os.path.join(pred_path, "newest_muti_soma_markers")
 comp_folder_path = os.path.join(pred_path, "comp")
 skel_folder_path = os.path.join(pred_path, "skel")
 clos_folder_path = os.path.join(pred_path, "clos")
@@ -107,7 +108,7 @@ v3dswc_copy_folder_path = os.path.join(pred_path, "v3dswc_copy")
 
 # pbd_folder_path = r"D:\tracing_ws\dataset\test1223"
 
-
+maybe_mkdir_p(newest_mutisoma_markers_folder_path)
 maybe_mkdir_p(tif_folder_path)
 maybe_mkdir_p(comp_folder_path)
 maybe_mkdir_p(skel_folder_path)
@@ -142,13 +143,18 @@ def remove_others_in_folder(folder_path):
 
 
 def get_full_name(file_name, df):
-    full_name = df[df['nnunet_name'] == file_name]['full_name'].values[0]
-    return str(full_name)
+    full_name = df[df['nnunet_name'] == file_name]['full_name']
+    if (full_name.empty):
+        return None
+    else:
+        return str(full_name.values[0])
 
 
 def rename_tif_file(file_name, tif_folder_path, df):
     file_path = os.path.join(tif_folder_path, file_name)
     full_name = get_full_name(file_name.split('.')[0], df)
+    if(full_name is None):
+        return
     new_file_path = os.path.join(tif_folder_path, full_name + '.tif')
     os.rename(file_path, new_file_path)
 
@@ -184,6 +190,9 @@ def uint8_tif_folder(tif_folder):
 def skel_tif_file(file_name, tif_folder, skel_folder):
     tif_path = os.path.join(tif_folder, file_name)
     skel_path = os.path.join(skel_folder, os.path.splitext(file_name)[0] + '.tif')
+
+    if(os.path.exists(skel_path)):
+        return
 
     data = tifffile.imread(tif_path).astype("uint8")
     skel = skeletonize_3d(data).astype("uint8")
@@ -1036,6 +1045,9 @@ def connect_to_soma_file(file_name, swc_folder, soma_folder, conn_folder):
     swc_path = os.path.join(swc_folder, os.path.splitext(file_name)[0] + '.swc')
     conn_path = os.path.join(conn_folder, os.path.splitext(file_name)[0] + '.swc')
 
+    if(os.path.exists(conn_path)):
+        return
+
     soma_region = tifffile.imread(soma_region_path).astype("uint8")
     # soma_region = get_main_soma_region_in_msoma_from_gsdt(soma_region,,
     soma_region = binary_dilation(soma_region, iterations=4).astype("uint8")
@@ -1117,6 +1129,8 @@ def connect_to_soma_file(file_name, swc_folder, soma_folder, conn_folder):
     #     point_l.p[1].s.remove(s)
     #     point_l.p[s].pruned = True
     # print(conn_path)
+    if(os.path.exists(conn_path)):
+        os.remove(conn_path)
     write_swc(conn_path, point_l)
     # print(len(point_l.p))
     del soma_region, point_l
@@ -1131,69 +1145,63 @@ def connect_to_soma_folder(swc_folder, soma_folder, conn_folder):
                       total=len(file_names), desc="connect_to_soma_folder", unit="file"):
             pass
 
-
-def to_v3dswc_file(file_name, swc_folder, v3dswc_folder):
-    swc_path = os.path.join(swc_folder, file_name)
-    v3dswc_path = os.path.join(v3dswc_folder, os.path.splitext(file_name)[0] + '.swc')
-
-    # try:
-    # print(os.path.basename(swc_path).replace('.swc', ''))
-    # origin_name = get_full_name(os.path.basename(swc_path).replace('.swc', ''))
-    full_name = os.path.basename(swc_path).replace('.swc', '')
-    # print(full_name)
+def get_origin_img_size(file_name, name_mapping_path):
     df = pd.read_csv(name_mapping_path)
-    try:
+    full_name = file_name.replace('.swc', '')
+    try: # shape: xyz
         img_size = df[df['full_name'] == int(full_name)]['img_size'].values[0]
     except:
         img_size = df[df['full_name'].str.split('_').str[0] == full_name.split("_")[0]]['img_size'].values[0]
-    # print(img_size)
     img_size = img_size.split(',')
-
     x_limit, y_limit, z_limit = img_size[2], img_size[1], img_size[0]
     x_limit, y_limit, z_limit = "".join(filter(str.isdigit, x_limit)), \
         "".join(filter(str.isdigit, y_limit)), \
         "".join(filter(str.isdigit, z_limit))
-    x_limit, y_limit, z_limit = int(x_limit) * 2, int(y_limit) * 2, int(z_limit) * 2
-    # print(x_limit, y_limit, z_limit)
+    origin_size = (int(x_limit), int(y_limit), int(z_limit))
+    return origin_size
 
-    # except:
-    #     try:
-    #         if (raw_path.endswith('.tif')):
-    #             img = tifffile.imread(raw_path)
-    #             x_limit, y_limit, z_limit = img.shape[2], img.shape[1], img.shape[0]
-    #             x_limit, y_limit, z_limit = x_limit * 2, y_limit * 2, z_limit * 2
-    #     except:
-    #         x_limit, y_limit, z_limit = 512, 512, 256
-    #         pass
+def to_v3dswc_file(file_name, swc_folder, v3dswc_folder, seg_folder):
+    swc_path = os.path.join(swc_folder, file_name)
+    v3dswc_path = os.path.join(v3dswc_folder, os.path.splitext(file_name)[0] + '.swc')
+    seg_path = os.path.join(seg_folder, os.path.splitext(file_name)[0] + '.tif')
+
+    origin_size = get_origin_img_size(file_name, name_mapping_path)
 
     with open(swc_path, 'r') as f:
         lines = f.readlines()
     res_lines = []
-    # print(x_limit, y_limit, z_limit)
+
+    seg = tifffile.imread(seg_path)
+    new_size = seg.shape
+    x_ratio, y_ratio, z_ratio = origin_size[0] / new_size[2], origin_size[1] / new_size[1], origin_size[2] / new_size[0]
+    # print(x_ratio, y_ratio, z_ratio)
+
     for line in lines:
         if (line[0] == '#'): continue
         temp_line = line.split()
+        x, y, z = float(temp_line[2]), float(temp_line[3]), float(temp_line[4])
 
-        x, y, z = float(temp_line[2]) * 2, float(temp_line[3]) * 2, float(temp_line[4]) * 2
-        y = y_limit - y - 1
-        #
+        y = new_size[1] - float(y)
+        x, y, z = float(x) * x_ratio, float(y) * y_ratio, float(z) * z_ratio
+
         x, y, z = max(x, 0), max(y, 0), max(z, 0)
-        # print(x, x_limit, y, y_limit, z, z_limit)
-        x, y, z = min(x, x_limit - 1), min(y, y_limit - 1), min(z, z_limit - 1)
+        x, y, z = min(x, origin_size[0] - 1), min(y, origin_size[1] - 1), min(z, origin_size[2] - 1)
 
         res_line = "%s 247 %s %s %s %s %s\n" % (
             temp_line[0], str(x), str(y), str(z), str(temp_line[5]), temp_line[6]
         )
         res_lines.append(res_line)
 
+    if(os.path.exists(v3dswc_path)):
+        os.remove(v3dswc_path)
     file_handle = open(v3dswc_path, mode="a")
     file_handle.writelines(res_lines)
     file_handle.close()
 
 
-def to_v3dswc_folder(swc_folder, v3dswc_folder):
+def to_v3dswc_folder(swc_folder, v3dswc_folder, seg_folder):
     file_names = [f for f in os.listdir(swc_folder) if f.endswith('.swc')]
-    partial_func = partial(to_v3dswc_file, swc_folder=swc_folder, v3dswc_folder=v3dswc_folder)
+    partial_func = partial(to_v3dswc_file, swc_folder=swc_folder, v3dswc_folder=v3dswc_folder, seg_folder=seg_folder)
     with Pool(pool_num) as p:
         for _ in tqdm(p.imap(partial_func, file_names),
                       total=len(file_names), desc="to_v3dswc_folder", unit="file"):
@@ -1241,6 +1249,7 @@ def compare_tif(folder1, folder2, out_folder):
 
 
 def prepossessing():
+    update_mutisoma_markers(newest_mutisoma_markers_folder_path)
     remove_others_in_folder(tif_folder_path)
     rename_tif_folder(tif_folder_path)
     uint8_tif_folder(tif_folder_path)
@@ -1287,7 +1296,7 @@ def tracing():
 def postprocessing():
     # gcut_folder(swc_folder_path, gmsoma_marker_folder_path, gcutswc_folder_path)
     connect_to_soma_folder(swc_folder_path, soma_folder_path, conn_folder_path)
-    to_v3dswc_folder(conn_folder_path, v3dswc_folder_path)
+    to_v3dswc_folder(conn_folder_path, v3dswc_folder_path, tif_folder_path)
 
     # copy v3dswc dir
     shutil.copytree(v3dswc_folder_path, v3dswc_copy_folder_path)
@@ -1333,12 +1342,23 @@ def pridicting(pri_source_dir, pri_output_dir, pri_model_id, prefix="v3draw"):
         predict_img(pri_source_downsample_img_path, pri_output_img_path, pri_model_id)
     pass
 
+def update_mutisoma_markers(newest_mutisoma_marker_folder):
+    directory = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw_8bit"
+    suffix = '.marker'
+    print("???")
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith(suffix) and "_i" not in file and "_p" not in file and "_c" not in file and "IHC" not in root:
+                # copy
+                shutil.copy(os.path.join(root, file), newest_mutisoma_marker_folder)
+
+
 if __name__ == '__main__':
     # pri_model_id = 167
     # pri_source_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015"
-    # pri_output_dir = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015_result"
+    # pri_output_dir = r"/PBsh      are/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015_result"
     # pridicting(pri_source_dir, pri_output_dir, pri_model_id)
 
-    prepossessing()
-    tracing()
+    # prepossessing()
+    # tracing()
     postprocessing()

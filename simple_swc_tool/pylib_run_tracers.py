@@ -34,8 +34,7 @@ class BaseTracer(object):
 
     # @timeout_decorator.timeout(DEFAULT_TIMEOUT)
     def run(self, cmd_str):
-        try:
-            out = subprocess.check_output('xvfb-run -a -s "-screen 0 640x480x16" ' + cmd_str, timeout=self.timeout, shell=True)
+        try: 
         except subprocess.TimeoutExpired:
             print(f'Time expired error for cmd: {cmd_str}')
             out = ''

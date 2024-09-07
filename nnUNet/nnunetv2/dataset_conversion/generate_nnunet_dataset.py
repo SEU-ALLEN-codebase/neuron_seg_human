@@ -259,6 +259,8 @@ def generate_test_data(test_source, imagests, raw_info_path, mutisoma_marker_pat
     progress_bar = tqdm(total=len(images), desc="Copying img", unit="file")
     for im, id in zip(images, ids):
         progress_bar.update(1)
+        if("IHC" in im):
+            continue
         target_name = f'image_{(id):03d}'
 
         # file_name = im.split('/')[-1]
