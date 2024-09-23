@@ -123,7 +123,7 @@ def plot_violin(df_gt, df_pred, violin_png):
     df_pred['Type'] = 'auto traced'  # "Pred"
 
     df = pd.concat([df_gt, df_pred], axis=0)
-    df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_name, var_name='Feature', value_name='Value')
+    df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
 
     for idx, feature in enumerate(feature_names):
         ax = axes[idx]
@@ -154,31 +154,37 @@ def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
     #                 'Max Branch Order', 'Average Contraction', 'Average Fragmentation',
     #                 'Average Parent-daughter Ratio', 'Average Bifurcation Angle Local',
     #                 'Average Bifurcation Angle Remote', 'Hausdorff Dimension']
-    feature_names = ['Number of Branches', 'Total Length']
+    feature_names = ['N_stem', 'Number of Branches', 'Total Length', 'Max Path Distance']
+    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)', 'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems'}
 
     num_features = len(feature_names)
     cols = 2
     rows = (num_features + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(cols*4, 4 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
     axes = axes.flatten()
+    plt.rcParams.update({'font.size': 20})  # 更新字体大小
+    # 设置字体 times new roman
+    plt.rcParams['font.family'] = 'Times New Roman'
 
-    df_gt['Type'], df_pred['Type'] = labels
-    df = pd.concat([df_gt, df_pred], axis=0)
+    df_a['Type'], df_b['Type'] = labels
+    df = pd.concat([df_a, df_b], axis=0)
     df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
 
     # 绘图
     for idx, feature in enumerate(feature_names):
         ax = axes[idx]
+        if feature == 'Number of Branches':
+            ax.set_ylim(-1.5, 150)
+        elif feature == 'Total Length':
+            ax.set_ylim(-50, 5000)
         sns.boxplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], ax=ax,
-                    palette="viridis", width=0.6, linewidth=0.8, gap=.2, fliersize=0.2)
-        # ax.set_title(feature, fontsize=12)
+                    palette="viridis", linewidth=0.8, gap=.2, fliersize=0, native_scale=True)
+        ax.set_title(feature_name_maps[feature], fontsize=15)
         ax.set_xlabel('')
         ax.set_ylabel('')
         ax.tick_params(axis='both', which='major', labelsize=10)  # 调整刻度标签大小
-        if idx == 1:
-            ax.legend(loc='upper right', fontsize=8, title_fontsize='10')
-        else:
-            ax.legend().set_visible(False)
+        ax.legend().set_visible(False)
+
 
     # 隐藏不需要的子图
     for ax in axes[num_features:]:
@@ -187,6 +193,92 @@ def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
     plt.tight_layout(pad=1.0)  # 调整布局
     plt.savefig(box_file)
     plt.close()
+
+def plot_delta_hist(df_a, df_b, hist_file, labels=['GS', 'Auto']):
+    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
+    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
+                         'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
+                         'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
+
+    num_features = len(feature_names)
+    cols = 5
+    rows = (num_features + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*3, 3 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
+    axes = axes.flatten()
+    plt.rcParams.update({'font.size': 20})  # 更新字体大小
+    # 设置字体 times new roman
+    plt.rcParams['font.family'] = 'Times New Roman'
+
+    df_a.sort_values(by='ID', inplace=True)
+    df_b.sort_values(by='ID', inplace=True)
+    assert len(df_a) == len(df_b), "Dataframes should have the same length."
+
+    # 绘图
+    for idx, feature in enumerate(feature_names):
+        ax = axes[idx]
+        delta_values = df_b[feature] - df_a[feature]
+
+        # 删除0值
+        delta_values = delta_values[delta_values != 0]
+
+        if(feature == 'N_stem'):
+            bins_number = 10
+        elif(feature == 'Total Length'):
+            bins_number = 15
+        elif(feature == 'Number of Branches'):
+            bins_number = 20
+        elif(feature == 'Number of Tips'):
+            bins_number = 10
+        elif(feature == 'Max Branch Order'):
+            bins_number = 5
+        else:
+            bins_number = 30
+
+        bins = np.linspace(delta_values.min(), delta_values.max(), bins_number)
+        if(0 not in bins):
+            min_nature = np.max(bins)
+            for bin in bins:
+                if(bin < min_nature and bin > 0):
+                    min_nature = bin
+            bins = [f - min_nature for f in bins]
+            bins.append(bins[-1] + bins[-1] - bins[-2])
+
+        if(feature == "Total Length"):
+            # 在左面添加30%的bin
+            step = bins[1] - bins[0]
+            times = round(0.2*len(bins))
+            new_bins = np.array([])
+            for i in range(times):
+                new_bins = np.append(new_bins, bins[0] - (times - i) * step)
+            bins = np.append(new_bins, bins)
+
+        # print(delta_values)
+        sns.histplot(delta_values, ax=ax, kde=True, color='skyblue', bins=bins, element="step", stat="count")
+
+        # 绘制x=0的虚线
+        ax.axvline(x=0, color='red', linestyle='--', linewidth=2)
+
+        worse_ratio = np.sum(delta_values < 0) / len(delta_values)
+        equal_ratio = np.sum(delta_values == 0) / len(delta_values)
+        better_ratio = np.sum(delta_values > 0) / len(delta_values)
+
+        ax.text(0.9, 0.5, f"{better_ratio:.2%}", transform=ax.transAxes, horizontalalignment='right', color='red',
+                fontsize=12)
+        ax.text(0.1, 0.5, f"{worse_ratio:.2%}", transform=ax.transAxes, horizontalalignment='left', color='red',
+                fontsize=12)
+
+        # ax.set_title(feature_name_maps[feature], fontsize=15)
+        ax.set_xlabel(f'Δ {feature_name_maps[feature]}', fontsize=15)
+        ax.set_ylabel("Frequency", fontsize=15)
+        ax.tick_params(axis='both', which='major', labelsize=10)  # 调整刻度标签大小
+        ax.legend().set_visible(False)
+
+    # 隐藏不需要的子图
+    for ax in axes[num_features:]:
+        ax.axis('off')
+
+    plt.tight_layout(pad=1.0)  # 调整布局
+    plt.savefig(hist_file)
 
 
 def process_files(gt_file, pred_file, v3d_path):
@@ -394,16 +486,17 @@ def l_measure_swc_dir(swc_dir, result_csv, v3d_path = r"/home/kfchen/Vaa3D-x.1.1
 if __name__ == '__main__':
     v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
 
-    swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/unified_recon_1um/ptls10"
-    result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/unified_recon_1um/ptls10.csv"
+    swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500"
+    result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500.csv"
     # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
 
-    swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/unified_recon_1um/source500"
-    result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/unified_recon_1um/source500.csv"
+    swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10"
+    result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv"
     # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
 
-    plot_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/unified_recon_1um/violin.png"
-    df_gt = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/unified_recon_1um/source500.csv")
-    df_pred = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/unified_recon_1um/ptls10.csv")
+    plot_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/hist.png"
+    df_a = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500.csv")
+    df_b = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv")
     # plot_violin(df_gt, df_pred, plot_file)
-    plot_box(df_gt, df_pred, plot_file, labels=['Baseline', 'Proposed'])
+    # plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
+    plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])

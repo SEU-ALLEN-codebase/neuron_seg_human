@@ -35,7 +35,7 @@ cell_ids = {
     '709': 'parietal lobe',
     '68': 'inferior parietal lobe',
 
-    '830': 'temporal pole',
+    # '830': 'temporal pole',
 
     '1312': 'occipital lobe',
     '2407': 'temporal Lobe',
@@ -175,7 +175,8 @@ if __name__ == '__main__':
         mip_img = augment_gamma(mip_img)
         mip_img = reduce_contrast(mip_img)
 
-        concat_img = np.concatenate([mip_img,  mip_swc], axis=1)
+        # concat_img = np.concatenate([mip_img,  mip_swc], axis=1)
+        concat_img = mip_swc
         # print(mip_img.shape, mip_swc.shape, concat_img.shape)
         save_path = os.path.join(mip_dir, f'{cell_id}.png')
         plt.imsave(save_path, concat_img, cmap='gray')

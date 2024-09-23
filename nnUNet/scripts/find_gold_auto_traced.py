@@ -257,7 +257,7 @@ def plot_samples(sample_list, img_dir, gt_swc_dir, auto_swc_dir, info_file, plot
         plt.axis('off')
         ax2.add_patch(Rectangle((0, 0), swc_mip1.shape[1] - 1, swc_mip1.shape[0] - 1, edgecolor='black', facecolor='none',
                                 linewidth=1))
-        plt.text(10, 20, "Gold standard", fontsize=20, color='black')
+        # plt.text(10, 20, "Gold standard", fontsize=20, color='black')
 
         ax3 = plt.subplot(3, plot_number, idx + 1 + 2 * plot_number)
         plt.imshow(swc_mip2)
@@ -265,7 +265,7 @@ def plot_samples(sample_list, img_dir, gt_swc_dir, auto_swc_dir, info_file, plot
         plt.axis('off')
         ax3.add_patch(Rectangle((0, 0), swc_mip2.shape[1] - 1, swc_mip2.shape[0] - 1, edgecolor='black', facecolor='none',
                                 linewidth=1))
-        plt.text(10, 20, "Proposed", fontsize=20, color='black')
+        # plt.text(10, 20, "Proposed", fontsize=20, color='black')
 
         # Optionally save each MIP image
         # plt.savefig(os.path.join(out_dir, f"{sample}_preview.png"))
@@ -280,6 +280,7 @@ def plot_samples(sample_list, img_dir, gt_swc_dir, auto_swc_dir, info_file, plot
         if(os.path.exists(file_path)):
             os.remove(file_path)
         plt.savefig(file_path)
+        print("save at ", file_path)
 
 
 
@@ -402,6 +403,7 @@ if __name__ == '__main__':
     print(f"mean + std: {np.mean(score) + np.std(score)}")
     print(score)
 
-    ggs = ["3397.swc", "3275.swc", "3030.swc", "3101.swc", "3112.swc", "2447.swc"]
-    plot_samples(ggs, img_dir, gt_swc_dir, auto_swc_dir, info_file, plot_number=6, out_dir=None)
+    # ggs = ["3397.swc", "3275.swc", "3030.swc", "3101.swc", "3112.swc", "2447.swc"]
+    ggs = ["3030.swc"]
+    plot_samples(iron_samples, img_dir, gt_swc_dir, auto_swc_dir, info_file, plot_number=1, out_dir=None)
 

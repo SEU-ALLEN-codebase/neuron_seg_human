@@ -65,8 +65,8 @@ elif (sys.platform == "linux"):
 # pred_folder_path = os.path.join(pred_path, "3d_cascade_fullres")
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
-data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset170_14k_hb_neuron"
-result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/14k_seg_result"
+data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset176_14k_hb_neuron_aug_lower_step"
+result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset176_14k_hb_neuron_aug_lower_step/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/validation"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
@@ -1298,6 +1298,11 @@ def postprocessing():
     connect_to_soma_folder(swc_folder_path, soma_folder_path, conn_folder_path)
     to_v3dswc_folder(conn_folder_path, v3dswc_folder_path, tif_folder_path)
 
+    swc_files = [f for f in os.listdir(v3dswc_folder_path) if f.endswith('.swc')]
+    for swc_file in swc_files:
+        if(swc_file.endswith('.tif.swc')):
+            os.rename(os.path.join(v3dswc_folder_path, swc_file), os.path.join(v3dswc_folder_path, swc_file.replace('.tif.swc', '.swc')))
+
     # copy v3dswc dir
     shutil.copytree(v3dswc_folder_path, v3dswc_copy_folder_path)
     get_list_traced(v3dswc_folder_path, list_traced_path)
@@ -1345,7 +1350,7 @@ def pridicting(pri_source_dir, pri_output_dir, pri_model_id, prefix="v3draw"):
 def update_mutisoma_markers(newest_mutisoma_marker_folder):
     directory = r"/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw_8bit"
     suffix = '.marker'
-    print("???")
+    # print("???")
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.endswith(suffix) and "_i" not in file and "_p" not in file and "_c" not in file and "IHC" not in root:
@@ -1359,6 +1364,6 @@ if __name__ == '__main__':
     # pri_output_dir = r"/PBsh      are/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw/IHC_CLEAR_data_v3draw/20240606_pre_IHC-after_CLEAR_v3draw_8bit_00001_00015_result"
     # pridicting(pri_source_dir, pri_output_dir, pri_model_id)
 
-    # prepossessing()
-    # tracing()
+    prepossessing()
+    tracing()
     postprocessing()
