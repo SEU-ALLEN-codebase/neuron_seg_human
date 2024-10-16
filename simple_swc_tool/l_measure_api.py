@@ -102,49 +102,99 @@ def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\va
     return features
 
 
-def plot_violin(df_gt, df_pred, violin_png):
-    feature_names = ['N_node', 'Soma_surface', 'N_stem', 'Number of Bifurcatons',
-                    'Number of Branches', 'Number of Tips', 'Overall Width', 'Overall Height',
-                    'Overall Depth', 'Average Diameter', 'Total Length', 'Total Surface',
-                    'Total Volume', 'Max Euclidean Distance', 'Max Path Distance',
-                    'Max Branch Order', 'Average Contraction', 'Average Fragmentation',
-                    'Average Parent-daughter Ratio', 'Average Bifurcation Angle Local',
-                    'Average Bifurcation Angle Remote', 'Hausdorff Dimension']
+# def plot_violin(df_gt, df_pred, violin_png):
+#     feature_names = ['N_node', 'Soma_surface', 'N_stem', 'Number of Bifurcatons',
+#                     'Number of Branches', 'Number of Tips', 'Overall Width', 'Overall Height',
+#                     'Overall Depth', 'Average Diameter', 'Total Length', 'Total Surface',
+#                     'Total Volume', 'Max Euclidean Distance', 'Max Path Distance',
+#                     'Max Branch Order', 'Average Contraction', 'Average Fragmentation',
+#                     'Average Parent-daughter Ratio', 'Average Bifurcation Angle Local',
+#                     'Average Bifurcation Angle Remote', 'Hausdorff Dimension']
+#
+#     # plt.figure(figsize=(20, 20))
+#
+#     num_features = len(feature_names)
+#     cols = 5  # 每行显示3个子图
+#     rows = (num_features + cols - 1) // cols
+#     fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows), sharey=False)
+#     axes = axes.flatten()
+#
+#     df_gt['Type'] = 'manual traced'  # "GT"
+#     df_pred['Type'] = 'auto traced'  # "Pred"
+#
+#     df = pd.concat([df_gt, df_pred], axis=0)
+#     df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
+#
+#     for idx, feature in enumerate(feature_names):
+#         ax = axes[idx]
+#
+#         sns.violinplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], split=True,
+#                        ax=ax)
+#         ax.set_title(feature)
+#         ax.set_xlabel('')  # 清除x轴标签
+#         ax.set_ylabel('')  # 清除y轴标签
+#         ax.legend().set_visible(False)  # 在每个子图中隐藏图例
+#
+#         if idx == 0:  # 只在第一个子图中显示图例
+#             ax.legend(title='Data Type', loc='upper right')
+#
+#         # 隐藏空余的子图
+#     for ax in axes[num_features:]:
+#         ax.axis('off')
+#
+#     plt.tight_layout()
+#     plt.savefig(violin_png)
+#     plt.close()
 
-    # plt.figure(figsize=(20, 20))
+def plot_violin(df_a, df_b, violin_file, labels=['GS', 'Auto']):
+    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
+    feature_name_maps = {
+        'Number of Branches': 'Number of Branches',
+        'Total Length': 'Total Length (μm)',
+        'Max Path Distance': 'Max Path Distance (μm)',
+        'N_stem': 'Number of Stems',
+        'Number of Tips': 'Number of Tips',
+        'Max Branch Order': 'Max Branch Order'
+    }
 
     num_features = len(feature_names)
-    cols = 5  # 每行显示3个子图
+    cols = 5
     rows = (num_features + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows), sharey=False)
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, 4 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
     axes = axes.flatten()
+    plt.rcParams.update({'font.size': 20})  # 更新字体大小
+    plt.rcParams['font.family'] = 'Times New Roman'
 
-    df_gt['Type'] = 'manual traced'  # "GT"
-    df_pred['Type'] = 'auto traced'  # "Pred"
-
-    df = pd.concat([df_gt, df_pred], axis=0)
+    df_a['Type'], df_b['Type'] = labels
+    df = pd.concat([df_a, df_b], axis=0)
     df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
 
+    # 绘图
     for idx, feature in enumerate(feature_names):
         ax = axes[idx]
+        if feature == 'Number of Branches':
+            ax.set_ylim(-1.5, 150)
+        elif feature == 'Total Length':
+            ax.set_ylim(-50, 5000)
 
-        sns.violinplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], split=True,
-                       ax=ax)
-        ax.set_title(feature)
-        ax.set_xlabel('')  # 清除x轴标签
-        ax.set_ylabel('')  # 清除y轴标签
-        ax.legend().set_visible(False)  # 在每个子图中隐藏图例
+        sns.violinplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature],
+                       ax=ax, palette="viridis", split=False, inner="quartile", linewidth=0.8)
 
-        if idx == 0:  # 只在第一个子图中显示图例
-            ax.legend(title='Data Type', loc='upper right')
+        # ax.set_title(feature_name_maps[feature], fontsize=15)
+        ax.set_xlabel('')
+        ax.set_ylabel(feature_name_maps[feature], fontsize=20)
+        ax.tick_params(axis='both', which='major', labelsize=15)  # 调整刻度标签大小
+        ax.legend().set_visible(False)
 
-        # 隐藏空余的子图
+    # 隐藏不需要的子图
     for ax in axes[num_features:]:
         ax.axis('off')
 
-    plt.tight_layout()
-    plt.savefig(violin_png)
+    plt.tight_layout()  # 调整布局
+    plt.savefig(violin_file)
     plt.close()
+
+
 
 def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
     # feature_names = ['N_node', 'Soma_surface', 'N_stem', 'Number of Bifurcatons',
@@ -154,8 +204,10 @@ def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
     #                 'Max Branch Order', 'Average Contraction', 'Average Fragmentation',
     #                 'Average Parent-daughter Ratio', 'Average Bifurcation Angle Local',
     #                 'Average Bifurcation Angle Remote', 'Hausdorff Dimension']
-    feature_names = ['N_stem', 'Number of Branches', 'Total Length', 'Max Path Distance']
-    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)', 'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems'}
+    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
+    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
+                         'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
+                         'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
 
     num_features = len(feature_names)
     cols = 2
@@ -497,6 +549,6 @@ if __name__ == '__main__':
     plot_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/hist.png"
     df_a = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500.csv")
     df_b = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv")
-    # plot_violin(df_gt, df_pred, plot_file)
+    plot_violin(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
     # plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
-    plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
+    # plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])

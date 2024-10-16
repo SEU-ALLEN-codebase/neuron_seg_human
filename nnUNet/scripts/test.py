@@ -65,8 +65,8 @@ elif (sys.platform == "linux"):
 # pred_folder_path = os.path.join(pred_path, "3d_cascade_fullres")
 # pred_path = r"D:\tracing_ws\nnUNet\nnUNet_results\150_test1223"
 # pred_path = r"E:\tracing_ws\10847\TEST10K7"
-data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset176_14k_hb_neuron_aug_lower_step"
-result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset176_14k_hb_neuron_aug_lower_step/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/validation"
+data_source_folder_path = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset178_deflu"
+result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset178_deflu/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/validation"
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
@@ -1214,7 +1214,7 @@ def get_list_traced(swc_folder, list_traced_path):
 
     # 对文件名进行排序（如果需要）
     swc_files.sort()
-    swc_ID = [int(i.split('_')[0]) for i in swc_files]
+    swc_ID = [int(i.split('_')[0].split('.')[0]) for i in swc_files]
 
     # 创建一个 DataFrame 来存储文件名
     df = pd.DataFrame(swc_files, columns=['full_name'])

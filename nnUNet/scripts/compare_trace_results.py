@@ -205,7 +205,7 @@ def compare_l_measure():
 
     # gt_dir = r"/data/kfchen/trace_ws/to_gu/lab/2_flip_after_sort"
     # gt_dir = r"/data/kfchen/trace_ws/neurom_ws/new_sort/pruned_swc"
-    gt_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/validation_traced/v3dswc"
+    gt_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset175_14k_hb_neuron_aug_pure/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/v3dswc"
 
 
 
@@ -214,7 +214,7 @@ def compare_l_measure():
     # gt_dir = (r"/data/kfchen/trace_ws/result500_164_500_aug_noptls/v3dswc")
     # pred_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
     # pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/validation_traced/pruned_v3dswc"
-    pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset176_14k_hb_neuron_aug_lower_step/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/v3dswc"
+    pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/v3dswc"
 
     # gt_csv = r"/data/kfchen/nnUNet/gt_swc.csv"
     # pred_csv = r"/data/kfchen/nnUNet/pred_swc.csv"

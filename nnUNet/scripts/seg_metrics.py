@@ -621,8 +621,8 @@ def plot_box_graded(result_csv_a, result_csv_b, box_file, labels=["Baseline", "P
         # else:
         #     offset_y = (ax.get_ylim()[1] - ax.get_ylim()[0]) * 0.2
         offset_y = ax.get_ylim()[1] + (ax.get_ylim()[1] - ax.get_ylim()[0]) * 0.05
-        ax.text(offset_x, offset_y, f'p={p_value:.4}',
-                horizontalalignment='center', color='black', fontsize=12)
+        # ax.text(offset_x, offset_y, f'p={p_value:.4}',
+        #         horizontalalignment='center', color='black', fontsize=12)
 
 
         # ax.set_title(feature_name_maps[feature], fontsize=15)
@@ -762,10 +762,13 @@ def plot_delta_histogram(result_csv_a, result_csv_b, hist_file, labels=["TypeA",
 
         # 绘制直方图
         sns.histplot(delta_values, bins=bins, kde=True, ax=ax,
-                     color='skyblue',
+                     color='gray',
                      element="step", stat="count")
         # ax.set_title(feature_name_maps.get(feature, feature))
-        ax.set_xlabel("Δ " + feature_name_maps.get(feature, feature), fontsize=15)
+        if('Broken' in feature):
+            ax.set_xlabel("-Δ " + feature_name_maps.get(feature, feature), fontsize=15)
+        else:
+            ax.set_xlabel("Δ " + feature_name_maps.get(feature, feature), fontsize=15)
         ax.set_ylabel('Frequency', fontsize=15)
 
         # left_side_ratio = np.sum(delta_values < 0) / len(delta_values)
@@ -891,13 +894,13 @@ def calc_graded_metrics():
 
 
 
-    # box_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_box1.png"
-    # plot_box_graded("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_source500.csv",
-    #                 "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_adaptive_gamma_source500.csv",
-    #                 box_file,
-    #                 labels=["nnUNet", "Proposed"],
-    #                 metric_names=["Broken Points Inner", "Broken Points Middle", "Broken Points Outer",
-    #                               "Skeleton Accuracy Inner", "Skeleton Accuracy Middle", "Skeleton Accuracy Outer"])
+    box_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_box1.png"
+    plot_box_graded("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_source500.csv",
+                    "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_ptls10.csv",
+                    box_file,
+                    labels=["nnUNet", "Proposed"],
+                    metric_names=["Broken Points Inner", "Broken Points Middle", "Broken Points Outer",
+                                  "Skeleton Accuracy Inner", "Skeleton Accuracy Middle", "Skeleton Accuracy Outer"])
 
     # hist_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_hist1.png"
     # plot_hist_graded("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_source500.csv",
@@ -908,14 +911,14 @@ def calc_graded_metrics():
     #                                "Skeleton Accuracy Inner", "Skeleton Accuracy Middle", "Skeleton Accuracy Outer"])
 
 
-    delta_hist_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_delta_hist_source500_vs_ptls10_2.png"
-    plot_delta_histogram("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500_graded_seg_metrics.csv",
-                         "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/ptls10_graded_seg_metrics.csv",
-                         delta_hist_file,
-                         labels=["nnUNet", "Proposed"],
-                         metric_names=["Broken Points Inner", "Skeleton Accuracy Inner",
-                                       "Broken Points Middle", "Skeleton Accuracy Middle",
-                                       "Broken Points Outer", "Skeleton Accuracy Outer"])
+    # delta_hist_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_delta_hist_source500_vs_ptls10_2.png"
+    # plot_delta_histogram("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500_graded_seg_metrics.csv",
+    #                      "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/ptls10_graded_seg_metrics.csv",
+    #                      delta_hist_file,
+    #                      labels=["nnUNet", "Proposed"],
+    #                      metric_names=["Broken Points Inner", "Skeleton Accuracy Inner",
+    #                                    "Broken Points Middle", "Skeleton Accuracy Middle",
+    #                                    "Broken Points Outer", "Skeleton Accuracy Outer"])
 
 def ttest_test():
     list_a = [1, 2, 3, 4, 5]

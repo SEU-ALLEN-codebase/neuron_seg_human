@@ -1,4 +1,7 @@
 import os
+
+import matplotlib.pyplot as plt
+
 from simple_swc_tool.soma_detection import simple_get_soma
 import tifffile
 import numpy as np
@@ -6,6 +9,11 @@ import cv2
 from concurrent.futures import ThreadPoolExecutor
 from skimage.measure import block_reduce
 import pandas as pd
+from skimage import img_as_float
+from scipy.ndimage import gaussian_filter
+from skimage import exposure
+from skimage.filters import laplace
+
 
 def find_resolution(df, filename):
     # print(filename)
@@ -70,6 +78,70 @@ def adaptive_augment_gamma(data, center, spacing=(1, 1, 1)):
 
     return data.astype("uint8")
 
+
+
+def de_fluorophore_gamma_augment(img):
+    def norm2(img):
+        img = (img - np.min(img)) / (np.max(img) - np.min(img))
+        return img
+
+    def sharpen_3d_image(image):
+        # 将图像转换为浮点类型，以避免数据类型问题
+        image = img_as_float(image)
+
+        # 应用高斯滤波进行平滑处理
+        blurred = gaussian_filter(image, sigma=1)
+
+        # 计算拉普拉斯滤波器的响应
+        laplacian = laplace(blurred)
+        laplacian = norm2(laplacian)
+        sharpened_image = laplacian
+        sharpened_image = exposure.adjust_gamma(sharpened_image, gamma=0.5)
+
+        return sharpened_image
+
+    img = img_as_float(img)
+    img = (img - np.min(img)) / (np.max(img) - np.min(img))
+
+    sharpen_img = sharpen_3d_image(img)
+
+    equal_img = exposure.equalize_adapthist(img, clip_limit=0.02, nbins=256)
+    fluorophore = gaussian_filter(equal_img, sigma=5)
+    de_flu_img = (equal_img - fluorophore)
+    de_flu_img = norm2(de_flu_img)
+    de_flu_img = exposure.adjust_gamma(de_flu_img, gamma=0.5)
+
+    add_img = sharpen_img + de_flu_img
+    add_img = norm2(add_img)
+    add_img = exposure.adjust_gamma(add_img, gamma=0.5)
+
+    return add_img
+
+def de_fluorophore_test():
+    img_dir = "/data/kfchen/nnUNet/nnUNet_raw/Dataset177_14k_de_fluorophore_gamma/imagesTr"
+    mask_dir = "/data/kfchen/nnUNet/nnUNet_raw/Dataset177_14k_de_fluorophore_gamma/labelsTr"
+    mip_dir = "/data/kfchen/trace_ws/de_f_test"
+
+    img_files = [f for f in os.listdir(img_dir) if f.endswith(".tif")]
+    img_files.sort()
+    img_files = img_files[:10]
+
+    for img_file in img_files:
+        img = tifffile.imread(os.path.join(img_dir, img_file))
+        mask = tifffile.imread(os.path.join(mask_dir, img_file.replace("_0000.tif", ".tif")))
+
+        img_mip = np.max(img, axis=0)
+        mask_mip = np.max(mask, axis=0)
+
+        plt.figure()
+        plt.subplot(121)
+        plt.imshow(img_mip, cmap='gray')
+        plt.subplot(122)
+        plt.imshow(mask_mip, cmap='gray')
+
+        plt.savefig(os.path.join(mip_dir, img_file.replace(".tif", ".png"))
+                    , dpi=300)
+
 def down_sample(img, factor=2):
     img = block_reduce(img, block_size=(factor, factor, factor), func=np.max)
     return img
@@ -119,6 +191,10 @@ def visulize_soma(seg_file, seg_dir, images_dir, mip_dir):
     cv2.imwrite(os.path.join(mip_dir, seg_file.replace(".tif", ".png")), img_seg_mip)
 
 if __name__ == "__main__":
+    de_fluorophore_test()
+    exit()
+
+
     images_dir = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/img/raw"
     seg_dir = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/img/mask"
     raw_info_path = "/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv"

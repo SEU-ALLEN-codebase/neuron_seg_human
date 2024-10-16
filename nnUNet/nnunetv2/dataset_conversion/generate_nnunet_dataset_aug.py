@@ -12,7 +12,7 @@ import numpy as np
 from skimage.measure import block_reduce
 from pylib.file_io import load_image
 import cc3d
-from nnUNet.scripts.adaptive_gamma import find_resolution, adaptive_augment_gamma, down_sample
+from nnUNet.scripts.adaptive_gamma import find_resolution, adaptive_augment_gamma, down_sample, de_fluorophore_gamma_augment
 from simple_swc_tool.soma_detection import simple_get_soma
 import concurrent.futures
 import subprocess
@@ -71,12 +71,14 @@ def generate_single_nnunet_data(img_file, mask_file, id, nnunet_dataset_id, imag
     spacing = (1, float(spacing) / 1000, float(spacing) / 1000)
 
     img = ((img - np.min(img)) / (np.max(img) - np.min(img)) * 255).astype('uint8')
-    soma_pos = simple_get_soma(mask, os.path.join(mask_dir, img_file))  # zyx
+    # soma_pos = simple_get_soma(mask, os.path.join(mask_dir, img_file))  # zyx
     img = down_sample(img)
     mask = down_sample(mask)
 
-    soma_pos = np.array(soma_pos) / 2
-    img = adaptive_augment_gamma(img, soma_pos, spacing)
+    # soma_pos = np.array(soma_pos) / 2
+    # img = adaptive_augment_gamma(img, soma_pos, spacing)
+
+    # img = de_fluorophore_gamma_augment(img)
 
     tifffile.imwrite(os.path.join(image_tr, target_name + '_0000.tif'), img)
     save_json({'spacing': spacing}, os.path.join(image_tr, target_name + '.json'))
@@ -187,7 +189,8 @@ def generate_train_data(image_dir, mask_dir, image_tr, label_tr,
 def generate_dataset(dataset_name = 'Dataset173_14k_hb_neuron_aug_4power'):
     nnUNet_raw = r"/data/kfchen/nnUNet/nnUNet_raw"
 
-    images_dir = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/img/raw"
+    # images_dir = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/img/raw"
+    images_dir = "/data/kfchen/trace_ws/de_flu_test/de_tif"
     seg_dir = "/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/img/mask"
 
     mutisoma_marker_path = r"/data/kfchen/nnUNet/nnUNet_raw/muti_soma_markers"
@@ -254,7 +257,7 @@ def move_test_data(dataset_name):
 
 
 if __name__ == '__main__':
-    dataset_name = 'Dataset176_14k_hb_neuron_aug_lower_step' # 阶段函数
+    dataset_name = 'Dataset179_deflu_no_aug' # 减小soma周围荧光
     generate_dataset(dataset_name)
     move_test_data(dataset_name)
     dataset_id = dataset_name[7:10]
