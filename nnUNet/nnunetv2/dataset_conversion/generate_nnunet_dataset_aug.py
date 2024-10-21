@@ -257,7 +257,7 @@ def move_test_data(dataset_name):
 
 
 if __name__ == '__main__':
-    dataset_name = 'Dataset179_deflu_no_aug' # 减小soma周围荧光
+    dataset_name = 'Dataset180_deflu_gamma' # 减小soma周围荧光
     generate_dataset(dataset_name)
     move_test_data(dataset_name)
     dataset_id = dataset_name[7:10]

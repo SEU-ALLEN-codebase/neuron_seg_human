@@ -214,7 +214,7 @@ def compare_l_measure():
     # gt_dir = (r"/data/kfchen/trace_ws/result500_164_500_aug_noptls/v3dswc")
     # pred_dir = r"/data/kfchen/trace_ws/result500_fold0_source/v3dswc"
     # pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/validation_traced/pruned_v3dswc"
-    pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/v3dswc"
+    pred_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset180_deflu_gamma/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/v3dswc"
 
     # gt_csv = r"/data/kfchen/nnUNet/gt_swc.csv"
     # pred_csv = r"/data/kfchen/nnUNet/pred_swc.csv"

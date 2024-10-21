@@ -248,11 +248,11 @@ if __name__ == "__main__":
     df = pd.read_csv(name_mapping_file)
 
     img_dir = r"/data/kfchen/nnUNet/nnUNet_raw/" + dataset_name + "/imagesTr"
-    mip_dir = r"/data/kfchen/nnUNet/nnUNet_results/" + dataset_name + "/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/soma_detection_result"
+    mip_dir = r"/data/kfchen/nnUNet/nnUNet_results/" + dataset_name + "/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/soma_detection_result"
     if(not os.path.exists(mip_dir)):
         os.makedirs(mip_dir)
 
-    seg_dir = r"/data/kfchen/nnUNet/nnUNet_results/" + dataset_name + "/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/validation"
+    seg_dir = r"/data/kfchen/nnUNet/nnUNet_results/" + dataset_name + "/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/validation"
     seg_files = [f for f in os.listdir(seg_dir) if f.endswith('.tif')]
     # seg_files = seg_files[:10]
 

@@ -144,36 +144,6 @@ def find_best_fluorescence_image(img, soma, tol=0.1, max_iter=100, low=10, high=
             soma_gaussian_best = soma_gaussian
             best_sigma = sigma
 
-    # iterations = 0
-    # while high - low > tol and iterations < max_iter:
-    #     mid1 = low + (high - low) / 3
-    #     mid2 = high - (high - low) / 3
-    #
-    #     soma_gaussian_mid1 = get_fluorescence_image(roi_soma, mid1)
-    #     soma_gaussian_mid2 = get_fluorescence_image(roi_soma, mid2)
-    #
-    #     ssim_index_mid1 = ssim(soma_gaussian_mid1, roi_img, data_range=data_range)
-    #     ssim_index_mid2 = ssim(soma_gaussian_mid2, roi_img, data_range=data_range)
-    #
-    #     # print(f"Sigma1: {mid1}, SSIM1: {ssim_index_mid1}")
-    #     # print(f"Sigma2: {mid2}, SSIM2: {ssim_index_mid2}")
-    #
-    #     if ssim_index_mid1 > ssim_index_mid2:
-    #         if ssim_index_mid1 > max_ssim:
-    #             max_ssim = ssim_index_mid1
-    #             soma_gaussian_best = soma_gaussian_mid1
-    #             best_sigma = mid1
-    #         high = mid2
-    #     else:
-    #         if ssim_index_mid2 > max_ssim:
-    #             max_ssim = ssim_index_mid2
-    #             soma_gaussian_best = soma_gaussian_mid2
-    #             best_sigma = mid2
-    #         low = mid1
-    #
-    #     iterations += 1
-
-
     print(f"Best Sigma: {best_sigma}, Max SSIM: {max_ssim}")
     de_flu_img = roi_img + roi_soma - soma_gaussian_best * 0.3
     de_flu_img = np.clip(de_flu_img, 0, 1)
@@ -221,15 +191,106 @@ def find_best_fluorescence_image_gpu(img, soma, tol=1, max_iter=100, low=5, high
 
     return roi_img, de_flu_img, result_img, best_sigma
 
+def find_best_sigma_map(img, soma, tol=0.1, max_iter=100, low=5, high=50):
+    origin_img = img
+    roi_pos = get_roi(get_max_connected_region(np.where(soma > 0.9, 1, 0)))
+    roi_img = img[roi_pos[0]:roi_pos[1], roi_pos[2]:roi_pos[3], roi_pos[4]:roi_pos[5]]
+    roi_soma = soma[roi_pos[0]:roi_pos[1], roi_pos[2]:roi_pos[3], roi_pos[4]:roi_pos[5]]
+    # print(np.max(img), np.min(img))
+    # print(np.max(soma), np.min(soma))
+
+    print(roi_img.shape, roi_soma.shape)
+
+    """    max_ssim = 0
+    soma_gaussian_best = None
+    for sigma in range(5, 50):
+        soma_gaussian = get_fluorescence_image(soma, sigma)
+        ssim_index = ssim(soma_gaussian, img, data_range=soma.max() - soma.min())
+        print(sigma, ssim_index)
+        if ssim_index > max_ssim:
+            max_ssim = ssim_index
+            soma_gaussian_best = soma_gaussian
+    return img, soma_gaussian_best"""
+    # return img, soma
+
+    max_ssim = 0
+    soma_gaussian_best = None
+    best_sigma = None
+
+    data_range = 1.0
+
+    for sigma in range(5, 25):
+        soma_gaussian = get_fluorescence_image(roi_soma, sigma)
+        try:
+            ssim_index = ssim(soma_gaussian, roi_img, data_range=data_range)
+        except:
+            best_sigma=0
+            break
+        # ssim_index = ssim(soma_gaussian, roi_img, data_range=data_range)
+        # print(sigma, ssim_index)
+        if ssim_index > max_ssim:
+            max_ssim = ssim_index
+            soma_gaussian_best = soma_gaussian
+            best_sigma = sigma
+
+    print(f"Best Sigma: {best_sigma}, Max SSIM: {max_ssim}")
+
+    # sigma_map = ndi.gaussian_filter(soma, sigma=best_sigma)
+    sigma_map = get_fluorescence_image(soma, best_sigma)
+
+    return sigma_map, best_sigma
+
+def deflu_gamma(data, power_values, data_range = [0.5, 1.0]):
+    power_values = ((power_values - power_values.min()) /
+                    (power_values.max() - power_values.min()) *
+                    (data_range[1] - data_range[0]) + data_range[0])
+
+
+    # Normalize data
+    min_data = np.min(data)
+    max_data = np.max(data)
+    data_normalized = (data - min_data) / (max_data - min_data)
+
+
+    # Apply gamma correction
+    data_corrected = data_normalized ** power_values
+
+    data = data_corrected
+
+    # Scale data back to original range
+    data = (data - np.min(data)) / (np.max(data) - np.min(data)) * 255
+
+    return data.astype("uint8")
+
+
+def gamma_t(data, power_value=0.5):
+    power_values = np.ones(data.shape) * power_value
+    min_data = np.min(data)
+    max_data = np.max(data)
+    data_normalized = (data - min_data) / (max_data - min_data)
+
+    # Apply gamma correction
+    data_corrected = data_normalized ** power_values
+
+    data = data_corrected
+
+    # Scale data back to original range
+    data = (data - np.min(data)) / (np.max(data) - np.min(data)) * 255
+
+    return data.astype("uint8")
+
+
 def visualize_result(img_file, xy_resolution, result_img_file, mip_file):
     # img_file = r"D:\tracing_ws\example_mips\raw\2385.tif"
-    # if (os.path.exists(result_img_file)):
-    #     return img_file, 0
-    # else:
-    #     print(img_file)
+    if (os.path.exists(result_img_file)):
+        return img_file, 0
+    else:
+        print(img_file)
 
     img = tifffile.imread(img_file)
+    origin_img = img.copy()
     origin_img_shape = img.shape
+
     if(xy_resolution == None):
         return img_file, None
     # if(img.shape[1] > 512):
@@ -240,15 +301,25 @@ def visualize_result(img_file, xy_resolution, result_img_file, mip_file):
     img_shape = img.shape
     # new_img_shape = (int(img_shape[0] * resolution[0]), int(img_shape[1] * resolution[1]), int(img_shape[2] * resolution[2]))
     # print(img.shape)
-    img = ndi.zoom(img, resolution, order=3)
+    # img = ndi.zoom(img, resolution, order=3)
+    img = resize(img, (img.shape[0] * resolution[0], img.shape[1] * resolution[1], img.shape[2] * resolution[2]),
+                 order=3)
     # print(img.shape)
 
     soma = np.where(img > 0.9, img, 0).astype(np.float32)
     # soma = get_max_connected_region(soma)
 
     img_gaussian = img.copy()
+    best_sigma_map, best_sigma = find_best_sigma_map(img, soma)
+    best_sigma_map = resize(best_sigma_map, origin_img_shape, order=3, preserve_range=True, anti_aliasing=False).astype(best_sigma_map.dtype)
+    result_img = deflu_gamma(origin_img, best_sigma_map)
+
+    # result_img = resize(result_img, origin_img_shape, order=3, preserve_range=True, anti_aliasing=False).astype(result_img.dtype)
+    result_img = ((result_img - result_img.min()) / (result_img.max() - result_img.min()) * 255).astype("uint8")
+    print(result_img.shape)
+
     # fluorescence_img = get_fluorescence_image(soma)
-    ion_img, de_flu_img, result_img, best_sigma = find_best_fluorescence_image(img, soma)
+    # ion_img, de_flu_img, result_img, best_sigma = find_best_fluorescence_image(img, soma)
     # print(ion_img.shape, de_flu_img.shape, result_img.shape, best_sigma)
     # diff_img = img - fluorescence_img + soma
     # diff_img = np.clip(diff_img, 0, 1)
@@ -257,43 +328,55 @@ def visualize_result(img_file, xy_resolution, result_img_file, mip_file):
     # img_gaussian = ndi.zoom(img_gaussian, (1/resolution[0], 1/resolution[1], 1/resolution[2]), order=3)
     # soma = ndi.zoom(soma, (1/resolution[0], 1/resolution[1], 1/resolution[2]), order=3)
     # result_img = ndi.zoom(result_img, (1/resolution[0], 1/resolution[1], 1/resolution[2]), order=3)
-    result_img = resize(result_img, origin_img_shape, order=3, preserve_range=True, anti_aliasing=False).astype(result_img.dtype)
-    result_img = ((result_img - result_img.min()) / (result_img.max() - result_img.min()) * 255).astype("uint8")
+    # result_img = resize(result_img, origin_img_shape, order=3, preserve_range=True, anti_aliasing=False).astype(result_img.dtype)
+    # result_img = ((result_img - result_img.min()) / (result_img.max() - result_img.min()) * 255).astype("uint8")
 
-    # if(os.path.exists(result_img_file)):
-    #     os.remove(result_img_file)
-    # tifffile.imwrite(result_img_file, result_img)
+    # img_gaussian = ndi.zoom(img_gaussian, (1 / resolution[0], 1 / resolution[1], 1 / resolution[2]), order=3)
+    # soma = ndi.zoom(soma, (1 / resolution[0], 1 / resolution[1], 1 / resolution[2]), order=3)
+    # best_sigma_map = ndi.zoom(best_sigma_map, (1 / resolution[0], 1 / resolution[1], 1 / resolution[2]), order=3)
+    # result_img = ndi.zoom(result_img, (1 / resolution[0], 1 / resolution[1], 1 / resolution[2]), order=3)
+    # img_gaussian = (img_gaussian - img_gaussian.min()) / (img_gaussian.max() - img_gaussian.min()).astype(np.float32)
+    # equ_img = exposure.equalize_adapthist(img_gaussian, clip_limit=0.02, nbins=256)
+    # simple_gamma_img = gamma_t(img_gaussian, 0.5)
+    # result_img = resize(result_img, origin_img_shape, order=3, preserve_range=True, anti_aliasing=False).astype(result_img.dtype)
 
-    img_gaussian = (img_gaussian - img_gaussian.min()) / (img_gaussian.max() - img_gaussian.min()).astype(np.float32)
-    img_gaussian = exposure.equalize_adapthist(img_gaussian, clip_limit=0.02, nbins=256)
-    img_gaussian_mip = np.max(img_gaussian, axis=0)
-    soma_mip = np.max(soma, axis=0)
-    ion_img_mip = np.max(ion_img, axis=0)
-    ion_soma_mip = np.max(de_flu_img, axis=0)
-    result_img_mip = np.max(result_img, axis=0)
+    if(os.path.exists(result_img_file)):
+        os.remove(result_img_file)
+    tifffile.imwrite(result_img_file, result_img)
 
-    fig, ax = plt.subplots(1, 5, figsize=(12, 6))
-    ax[0].imshow(img_gaussian_mip, cmap='gray')
-    ax[0].set_title('Original Image')
-    ax[0].axis('off')
-    ax[1].imshow(soma_mip, cmap='gray')
-    ax[1].set_title('Soma region thed=.9')
-    ax[1].axis('off')
-    ax[2].imshow(ion_img_mip, cmap='gray')
-    ax[2].set_title('ROI Image')
-    ax[2].axis('off')
-    ax[3].imshow(ion_soma_mip, cmap='gray')
-    ax[3].set_title('De-fluorescence ROI Image')
-    ax[3].axis('off')
-    ax[4].imshow(result_img_mip, cmap='gray')
-    ax[4].set_title('Result Image')
-    ax[4].axis('off')
-    plt.tight_layout()
-    # plt.show()
-    if(os.path.exists(mip_file)):
-        os.remove(mip_file)
-    plt.savefig(mip_file)
-    plt.close()
+    #
+    # img_gaussian_mip = np.max(img_gaussian, axis=0)
+    # soma_mip = np.max(soma, axis=0)
+    # best_sigma_map_mip = np.max(best_sigma_map, axis=0)
+    # result_img_mip = np.max(result_img, axis=0)
+    # equ_img_mip = np.max(equ_img, axis=0)
+    # simple_gamma_img_mip = np.max(simple_gamma_img, axis=0)
+    #
+    # fig, ax = plt.subplots(1, 6, figsize=(12, 6))
+    # ax[0].imshow(img_gaussian_mip, cmap='gray')
+    # ax[0].set_title('Original Image')
+    # ax[0].axis('off')
+    # ax[1].imshow(soma_mip, cmap='gray')
+    # ax[1].set_title('Soma region thed=.9')
+    # ax[1].axis('off')
+    # ax[2].imshow(best_sigma_map_mip, cmap='gray')
+    # ax[2].set_title('Best Sigma Map')
+    # ax[2].axis('off')
+    # ax[3].imshow(result_img_mip, cmap='gray')
+    # ax[3].set_title('Result Image')
+    # ax[3].axis('off')
+    # ax[4].imshow(equ_img_mip, cmap='gray')
+    # ax[4].set_title('Equalized Image')
+    # ax[4].axis('off')
+    # ax[5].imshow(simple_gamma_img_mip, cmap='gray')
+    # ax[5].set_title('Simple Gamma Image')
+    # ax[5].axis('off')
+    # plt.tight_layout()
+    # # plt.show()
+    # if(os.path.exists(mip_file)):
+    #     os.remove(mip_file)
+    # plt.savefig(mip_file)
+    # plt.close()
 
     return img_file, best_sigma
 
@@ -360,8 +443,13 @@ def find_resolution(df, filename):
 if __name__ == '__main__':
     img_dir = r"/PBshare/SEU-ALLEN/Users/KaifengChen/human_brain/img/raw"
     neuron_info_file = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv"
-    result_img_dir = r"/data/kfchen/trace_ws/de_flu_test/de_tif"
-    mip_dir = r"/data/kfchen/trace_ws/de_flu_test/mip"
+    result_img_dir = r"/data/kfchen/trace_ws/de_flu_test/de_tif_v2"
+    mip_dir = r"/data/kfchen/trace_ws/de_flu_test/mip_v2"
+
+    if(not os.path.exists(result_img_dir)):
+        os.makedirs(result_img_dir)
+    if(not os.path.exists(mip_dir)):
+        os.makedirs(mip_dir)
 
     imgs = [f for f in os.listdir(img_dir) if f.endswith('.tif')]
     result_imgs = [f for f in os.listdir(result_img_dir) if f.endswith('.tif')]
@@ -381,9 +469,9 @@ if __name__ == '__main__':
     # if(os.path.exists(result_img_dir)):
     #     os.system(f"rm -rf {result_img_dir}")
     # os.makedirs(result_img_dir)
-    if(os.path.exists(mip_dir)):
-        os.system(f"rm -rf {mip_dir}")
-    os.makedirs(mip_dir)
+    # if(os.path.exists(mip_dir)):
+    #     os.system(f"rm -rf {mip_dir}")
+    # os.makedirs(mip_dir)
 
     df = pd.read_csv(neuron_info_file, encoding='gbk')
     img_files = [f for f in os.listdir(img_dir) if f.endswith('.tif')]
@@ -392,8 +480,8 @@ if __name__ == '__main__':
 
     img_files = sorted(img_files, key=lambda x: int(x.split('.')[0]))
     # img_files = img_files[200:]
-    img_files = img_files[:50]
-    # interested = ['5994']
+    # img_files = img_files[:50]
+    # interested = ['3256']
     # img_files = [f for f in img_files if f.split('.')[0] in interested]
     # print(img_files)
 
@@ -410,26 +498,24 @@ if __name__ == '__main__':
     # sigma_list = []
     result_list = []
 
-    # # 使用线程池执行多线程任务
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        # 创建一个future列表，用于保持结果的顺序
-        futures = [executor.submit(visualize_result, img_file, xy_resolution, result_img_file, mip_file) for img_file, xy_resolution, result_img_file, mip_file in zip(img_files, xy_resolution_list, result_img_files, mip_files)]
+    # 使用线程池执行多线程任务
+    # with ThreadPoolExecutor(max_workers=8) as executor:
+    #     # 创建一个future列表，用于保持结果的顺序
+    #     futures = [executor.submit(visualize_result, img_file, xy_resolution, result_img_file, mip_file) for img_file, xy_resolution, result_img_file, mip_file in zip(img_files, xy_resolution_list, result_img_files, mip_files)]
+    #
+    #     # 按照任务被提交的顺序获取结果
+    #     for future in as_completed(futures):
+    #         img_file, sigma = future.result()
+    #         result_list.append((img_file, sigma))
 
-        # 按照任务被提交的顺序获取结果
-        for future in as_completed(futures):
-            img_file, sigma = future.result()
-            # xy_resolution_list.append(xy_resolution)
-            # mip_files.append(mip_file)
-            # result_img_files.append(result_img_file)
-            # sigma_list.append(sigma)
-            result_list.append((img_file, sigma))
 
-    # for img_file, xy_resolution, result_img_file, mip_file in zip(img_files, xy_resolution_list, result_img_files, mip_files):
-    #     if(xy_resolution == None):
-    #         result_list.append((img_file, 0))
-    #     _, sigma = visualize_result(os.path.join(img_dir, img_file), xy_resolution, result_img_file, mip_file)
-    #     # sigma_list.append(sigma)
-    #     result_list.append((img_file, sigma))
+
+    for img_file, xy_resolution, result_img_file, mip_file in zip(img_files, xy_resolution_list, result_img_files, mip_files):
+        if(xy_resolution == None):
+            result_list.append((img_file, 0))
+        _, sigma = visualize_result(os.path.join(img_dir, img_file), xy_resolution, result_img_file, mip_file)
+        # sigma_list.append(sigma)
+        result_list.append((img_file, sigma))
 
     # to csv img file and sigma
     df = pd.DataFrame({'img': [r.split('/')[-1] for r in img_files], 'sigma': [r[1] for r in result_list]})
