@@ -815,7 +815,7 @@ def trace_app2_with_soma_file(file_name, skelwithsoma_folder, somamarker_folder,
         outswc_file         If not be specified, will be named automatically based on the input image file name.
     '''
 
-    resample = 1
+    resample = 0
     gsdt = 1
     b_RadiusFrom2D = 1
 

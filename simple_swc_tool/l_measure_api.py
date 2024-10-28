@@ -204,15 +204,15 @@ def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
     #                 'Max Branch Order', 'Average Contraction', 'Average Fragmentation',
     #                 'Average Parent-daughter Ratio', 'Average Bifurcation Angle Local',
     #                 'Average Bifurcation Angle Remote', 'Hausdorff Dimension']
-    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
+    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length']
     feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
                          'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
                          'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
 
     num_features = len(feature_names)
-    cols = 2
+    cols = 4
     rows = (num_features + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*4, 4 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*2, 2 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
     axes = axes.flatten()
     plt.rcParams.update({'font.size': 20})  # 更新字体大小
     # 设置字体 times new roman
@@ -231,7 +231,8 @@ def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
             ax.set_ylim(-50, 5000)
         sns.boxplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], ax=ax,
                     palette="viridis", linewidth=0.8, gap=.2, fliersize=0, native_scale=True)
-        ax.set_title(feature_name_maps[feature], fontsize=15)
+        # ax.set_title(feature_name_maps[feature], fontsize=15)
+        ax.set_title("")
         ax.set_xlabel('')
         ax.set_ylabel('')
         ax.tick_params(axis='both', which='major', labelsize=10)  # 调整刻度标签大小
@@ -546,9 +547,9 @@ if __name__ == '__main__':
     result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv"
     # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
 
-    plot_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/hist.png"
-    df_a = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500.csv")
-    df_b = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv")
-    plot_violin(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
-    # plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
+    plot_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/hist.png"
+    df_a = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/gt_swc.csv")
+    df_b = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/pred_swc.csv")
+    plot_violin(df_a, df_b, plot_file, labels=['Baseline', 'Gamma'])
+    plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
     # plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])

@@ -8,6 +8,8 @@ import os
 import pandas as pd
 from scipy.optimize import curve_fit
 
+tifffile.imread()
+
 def find_resolution(df, filename):
     # print(filename)
     filename = filename.split('.')[0]
@@ -22,9 +24,11 @@ def exponential_decay(x, a, b, c):
 
 def test_soma_detectison(process_file_pair):
     img_file, seg_file, neuron_info_df, mip_file = process_file_pair
+    # print(img_file, seg_file, neuron_info_df, mip_file)
 
-    if(os.path.exists(mip_file.replace('.tif', '_MIP.png'))):
-        return
+    # if(os.path.exists(mip_file.replace('.tif', '_MIP.png'))):
+    #     print(f"{mip_file.replace('.tif', '_MIP.png')} exists.")
+    #     return
     seg = tifffile.imread(seg_file).astype(np.uint8)
     origin_seg = seg.copy()
 
@@ -52,6 +56,7 @@ def test_soma_detectison(process_file_pair):
 
     # 存储每个阶段的MIP图像
     mip_images = []
+    # print("???")
 
     for radius in kernel_radii:
         # print(f"Processing with kernel radius: {radius}")
@@ -103,26 +108,34 @@ def test_soma_detectison(process_file_pair):
         high_freq_averages.append(A_high)
 
         # 生成沿z轴的MIP
-        mip = np.max(opened_img, axis=2)
+        mip = np.max(opened_img, axis=0)
         mip_images.append(mip)
+        # save
+        # tifffile.imsave(f"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/mip_{radius}.png", (mip*255).astype("uint8"))
 
         # if(high_freq_averages[0] * 0.1 > A_high):
         #     print(f"Kernel radius {radius} is the best.")
         #     break
 
+    # print("???")
     fig, ax1 = plt.subplots()
+    # x label
+    ax1.set_xlabel('Kernel radius')
+    # 设置大小
+    fig.set_size_inches(4, 2.5)
     kernel_radii = kernel_radii[:len(high_freq_ratios)]
     high_freq_averages = np.array(high_freq_averages)
     high_freq_averages = (high_freq_averages - high_freq_averages.min()) / (high_freq_averages.max() - high_freq_averages.min())
 
-    popt, pcov = curve_fit(exponential_decay, kernel_radii, high_freq_averages, p0=(10, 1, 0), maxfev=2000)
+    popt, pcov = curve_fit(exponential_decay, kernel_radii, high_freq_averages, p0=(0.9, 0.5, 0), maxfev=2000)
+    print(f"{popt}")
 
     # 生成拟合曲线数据
     x_fit = np.linspace(kernel_radii.min(), kernel_radii.max(), 100)
     y_fit = exponential_decay(x_fit, *popt)
 
     fitted_gradients = np.gradient(y_fit, x_fit)
-    fitted_gradients = (fitted_gradients - fitted_gradients.min()) / (fitted_gradients.max() - fitted_gradients.min())
+    fitted_gradients = (fitted_gradients - fitted_gradients.min()) / (fitted_gradients.max() - fitted_gradients.min()) - 1
 
     # poly_degree = 2
     # coeffs = np.polyfit(kernel_radii, high_freq_averages, poly_degree)
@@ -155,28 +168,36 @@ def test_soma_detectison(process_file_pair):
     # ax1.tick_params(axis='y', labelcolor=color)
     # ax1.set_title('High-Frequency Metrics vs. Kernel Radius')
 
-    ax2 = ax1.twinx()  # 共享x轴
+    # ax2 = ax1.twinx()  # 共享x轴
 
     color = 'tab:blue'
-    ax2.set_ylabel('Average High-Frequency Amplitude', color=color)
-    ax2.plot(kernel_radii, high_freq_averages, marker='s', color=color)
+    ax1.set_ylabel('Average high-freq amplitude', color=color)
+    ax1.plot(kernel_radii, high_freq_averages, marker='s', color=color)
     # ax2.plot(kernel_radii_smooth, high_freq_averages_fit, color='tab:cyan', linestyle='--',
     #          label=f'Poly Degree {poly_degree} Fit')
     # ax2.plot(kernel_radii, high_freq_averages_smooth, color='tab:cyan', linestyle='--',
     #          label=f'Moving Average')
-    ax2.plot(x_fit, y_fit, color='red', label='Exponential Decay Fit')
-    ax2.tick_params(axis='y', labelcolor=color)
+    ax1.plot(x_fit, y_fit, color='red', label='Exponential Decay Fit')
+    ax1.tick_params(axis='y', labelcolor=color)
 
-    ax3 = ax1.twinx()
-    ax3.spines['right'].set_position(('outward', 60))
+    ax2 = ax1.twinx()
+    # ax2.spines['right'].set_position(('outward', 60))
     color = 'tab:green'
-    ax3.set_ylabel('Gradient of Avg High-Freq Amplitude', color=color)
-    ax3.plot(x_fit, fitted_gradients, color=color, label='Gradient of Avg High-Freq Amplitude')
+    ax2.set_ylabel('Gradient of fitted curve', color=color)
+    ax2.plot(x_fit, fitted_gradients, color=color, label='Gradient of Avg High-Freq Amplitude')
+    ax2.tick_params(axis='y', labelcolor=color)
     # plot line y
-    ax3.axhline(y=0.9, color='gray', linestyle='--')
+    ax2.axhline(y=-0.1, color='gray', linestyle='--')
     # gradient == 0.15
     best_radius = x_fit[np.argmin(np.abs(fitted_gradients - 0.9))]
-    ax3.axvline(x=best_radius, color='gray', linestyle='--')
+    # ax3.axvline(x=best_radius, color='gray', linestyle='--')
+
+    a,b,c = popt
+    function_text = f'$y = {a:.2f} \cdot e^{{-{b:.2f} \cdot (x - 2)}} + {c:.2f}$'
+    # ax3.text(4, 0.5, function_text, color='red', fontsize=12,
+    #          bbox=dict(facecolor='white', alpha=0.6, edgecolor='none'))
+
+    # 拟合函数
 
     # ax3 = ax1.twinx()
     # # 调整右侧y轴的位置
@@ -221,6 +242,7 @@ def test_soma_detectison(process_file_pair):
         result_img.max(axis=1),
         result_img.max(axis=2)
     ]
+    # mip_list = mip_images
 
 
 
@@ -228,10 +250,10 @@ def test_soma_detectison(process_file_pair):
     fig, axes = plt.subplots(3, 3, figsize=(18, 12))
     for i, ax in enumerate(axes.flat):
         ax.imshow(mip_list[i], cmap='gray')
-        if(i < 3):
-            ax.imshow(mip_list[i+6], cmap='jet', alpha=0.5)  # 调整alpha以控制透明度
-        if(i >= 3 and i < 6):
-            ax.imshow(mip_list[i+3], cmap='jet', alpha=0.5)  # 调整alpha以控制透明度
+        # if(i < 3):
+        #     ax.imshow(mip_list[i+6], cmap='jet', alpha=0.5)  # 调整alpha以控制透明度
+        # if(i >= 3 and i < 6):
+        #     ax.imshow(mip_list[i+3], cmap='jet', alpha=0.5)  # 调整alpha以控制透明度
 
         ax.set_title(f'MIP {i+1}')
         ax.axis('off')
@@ -255,13 +277,15 @@ if __name__ == "__main__":
     seg_dir = r"/data/kfchen/nnUNet/nnUNet_results/" + dataset_name + "/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/validation"
     seg_files = [f for f in os.listdir(seg_dir) if f.endswith('.tif')]
     # seg_files = seg_files[:10]
+    interest_seg_files = ["075"]
+    seg_files = [f for f in seg_files if f.split('_')[1].split('.')[0] in interest_seg_files]
 
     process_file_pairs = []
     for seg_file in seg_files:
         process_file_pairs.append((os.path.join(img_dir, seg_file.replace(".tif", "_0000.tif")), os.path.join(seg_dir, seg_file), df, os.path.join(mip_dir, seg_file)))
 
-    # for process_file_pair in process_file_pairs:
-    #     test_soma_detectison(process_file_pair)
-    from multiprocessing import Pool
-    with Pool(10) as p:
-        p.map(test_soma_detectison, process_file_pairs)
+    for process_file_pair in process_file_pairs:
+        test_soma_detectison(process_file_pair)
+    # from multiprocessing import Pool
+    # with Pool(10) as p:
+    #     p.map(test_soma_detectison, process_file_pairs)
