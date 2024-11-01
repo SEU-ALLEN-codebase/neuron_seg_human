@@ -821,10 +821,10 @@ def main_calc_metrics():
         'cas_seg_baseline': "/home/kfchen/nnUNet_results/Dataset301_CAS/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source/validation",
         'cas_seg_ptls': "/home/kfchen/nnUNet_results/Dataset301_CAS/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls/validation",
     }
-    seg_folder = dataset_list['hb_seg_ptls']
-    gt_folder = dataset_list['hb_gt']
+    # seg_folder = dataset_list['hb_seg_ptls']
+    # gt_folder = dataset_list['hb_gt']
 
-    seg_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500"
+    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/baseline" + "/0_seg"
     gt_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/label"
 
     # generate_mip_and_compare(dataset_list['hb_seg_baseline'], dataset_list['hb_seg_ptls'],
@@ -858,49 +858,55 @@ def main_calc_metrics():
           round(mean_c_relative_coverage, 4), round(mean_relative_foreground_ratio, 4), round(mean_broken_points, 4),
             round(mean_skel_acc, 4))
 
-    result_csv = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500.csv"
+    result_csv = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/baseline" + "_seg_metrics.csv"
     if(os.path.exists(result_csv)):
         os.remove(result_csv)
     # sort
     all_metrics = sorted(all_metrics, key=lambda x: x[0])
     with open(result_csv, "w") as f:
         f.write("ID,Dice,Overlap,C-Dice,C-Overlap,C-Relative Coverage,Relative Foreground Ratio,Broken Points,Skeleton Accuracy\n")
+        f.write(f"Mean,{round(mean_dice, 4)},{round(mean_overlap, 4)},{round(mean_c_dice, 4)},"
+                f"{round(mean_c_overlap, 4)},{round(mean_c_relative_coverage, 4)},{round(mean_relative_foreground_ratio, 4)},"
+                f"{round(mean_broken_points, 4)},{round(mean_skel_acc, 4)}\n")
         for metrics in all_metrics:
             f.write(f"{metrics[0]},{metrics[1]},{metrics[3]},{metrics[2]},{metrics[4]},{metrics[5]},{metrics[6]},{metrics[7]},{metrics[8]}\n")
-        # f.write(f"Mean,{round(mean_dice, 4)},{round(mean_overlap, 4)},{round(mean_c_dice, 4)},{round(mean_c_overlap, 4)},{round(mean_c_relative_coverage, 4)},{round(mean_relative_foreground_ratio, 4)},{round(mean_broken_points, 4)},{round(mean_skel_acc, 4)}\n")
+
 
 
     # visualize
-    box_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/box.png"
-    plot_box("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500.csv",
-             "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/ptls10.csv",
-             box_file, labels=["nnUNet", "Proposed"])
+    # box_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/box.png"
+    # plot_box("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500.csv",
+    #          "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/ptls10.csv",
+    #          box_file, labels=["nnUNet", "Proposed"])
 
 def calc_graded_metrics():
-    # seg_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500"
-    # gt_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/label"
-    # soma_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/somamarker"
-    #
-    # all_metrics = compute_graded_metrics_for_all_pairs(seg_folder, gt_folder, soma_folder, target_cc_num=1, prefix=".tif")
-    #
-    # result_csv = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/" + seg_folder.split("/")[-1] + "_graded_seg_metrics.csv"
-    # if (os.path.exists(result_csv)):
-    #     os.remove(result_csv)
-    # all_metrics = sorted(all_metrics, key=lambda x: x[0])
-    # with open(result_csv, "w") as f:
-    #     f.write("ID,Broken Points Inner,Broken Points Middle,Broken Points Outer,Skeleton Accuracy Inner,Skeleton Accuracy Middle,Skeleton Accuracy Outer\n")
-    #     for metrics in all_metrics:
-    #         f.write(f"{metrics[0]},{metrics[1]},{metrics[2]},{metrics[3]},{metrics[4]},{metrics[5]},{metrics[6]}\n")
+    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/0_seg"
+    gt_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/label"
+    soma_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/somamarker"
+
+    """分段metrics"""
+    all_metrics = compute_graded_metrics_for_all_pairs(seg_folder, gt_folder, soma_folder, target_cc_num=1, prefix=".tif")
+
+    result_csv = "/data/kfchen/trace_ws/paper_trace_result/nnunet/" + seg_folder.split("/")[-1] + "_graded_seg_metrics.csv"
+    if (os.path.exists(result_csv)):
+        os.remove(result_csv)
+    all_metrics = sorted(all_metrics, key=lambda x: x[0])
+    with open(result_csv, "w") as f:
+        f.write("ID,Broken Points Inner,Broken Points Middle,Broken Points Outer,Skeleton Accuracy Inner,Skeleton Accuracy Middle,Skeleton Accuracy Outer\n")
+        for metrics in all_metrics:
+            f.write(f"{metrics[0]},{metrics[1]},{metrics[2]},{metrics[3]},{metrics[4]},{metrics[5]},{metrics[6]}\n")
 
 
 
-    box_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_box1.png"
-    plot_box_graded("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_source500.csv",
-                    "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_ptls10.csv",
-                    box_file,
-                    labels=["nnUNet", "Proposed"],
-                    metric_names=["Broken Points Inner", "Broken Points Middle", "Broken Points Outer",
-                                  "Skeleton Accuracy Inner", "Skeleton Accuracy Middle", "Skeleton Accuracy Outer"])
+
+
+    # box_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_box1.png"
+    # plot_box_graded("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_source500.csv",
+    #                 "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_ptls10.csv",
+    #                 box_file,
+    #                 labels=["nnUNet", "Proposed"],
+    #                 metric_names=["Broken Points Inner", "Broken Points Middle", "Broken Points Outer",
+    #                               "Skeleton Accuracy Inner", "Skeleton Accuracy Middle", "Skeleton Accuracy Outer"])
 
     # hist_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_hist1.png"
     # plot_hist_graded("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/graded_source500.csv",
@@ -932,5 +938,6 @@ def ttest_test():
 
 # main
 if __name__ == '__main__':
-    calc_graded_metrics()
+    main_calc_metrics()
+    # calc_graded_metrics()
     # ttest_test()
