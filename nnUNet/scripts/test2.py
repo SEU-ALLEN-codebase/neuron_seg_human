@@ -124,9 +124,16 @@ def copy_file_from_seg_result(origin_seg_file, seg_dir, name_mapping_file):
 
     # copy the seg file to the output directory
     file_name = os.path.basename(origin_seg_file)
-    if(file_name.endswith('.nii.gz')):
-        file_name = file_name.replace('.nii.gz', '.tif')
-    shutil.copy(origin_seg_file, seg_dir)
+    if (file_name.endswith('.nii.gz')):
+        seg = sitk.ReadImage(origin_seg_file)
+        seg = sitk.GetArrayFromImage(seg)
+        seg = (np.where(seg > 0, 1, 0) * 255).astype("uint8")
+        file_name = file_name.replace('_pred0.nii.gz', '.tif')
+        tifffile.imwrite(os.path.join(seg_dir, file_name), seg, compression='zlib')
+    else:
+        seg = tifffile.imread(new_file_path)
+        seg = (np.where(seg > 0, 1, 0) * 255).astype("uint8")
+        tifffile.imwrite(os.path.join(seg_dir, file_name), seg, compression='zlib')
 
     df = pd.read_csv(name_mapping_file)
     full_name = get_full_name(file_name.split('.')[0], df)
@@ -135,20 +142,9 @@ def copy_file_from_seg_result(origin_seg_file, seg_dir, name_mapping_file):
         return
     # rename the seg file
     new_file_path = os.path.join(seg_dir, full_name)
-    if(file_name.endswith('.nii.gz')):
-        new_file_name = new_file_path.replace('.tif', '.nii.gz')
     os.rename(os.path.join(seg_dir, file_name), new_file_path)
+    print(new_file_path, "ok")
 
-    # to uint8
-    if(file_name.endswith('.tif')):
-        seg = tifffile.imread(new_file_path)
-        seg = (np.where(seg > 0, 1, 0) * 255).astype("uint8")
-    elif(file_name.endswith('.nii.gz')):
-        seg = sitk.ReadImage(new_file_path)
-        seg = sitk.GetArrayFromImage(seg)
-        seg = (np.where(seg > 0, 1, 0) * 255).astype("uint8")
-        new_file_path = new_file_path.replace('.nii.gz', '.tif')
-    tifffile.imwrite(new_file_path, seg, compression='zlib')
 
 def prepare_seg_files(origin_seg_dir, seg_dir, name_mapping_file):
     origin_seg_files = [os.path.join(origin_seg_dir, f) for f in os.listdir(origin_seg_dir)]
@@ -330,11 +326,11 @@ class AutoTracePipeline(FileProcessingPipeline):
 
 
 if __name__ == "__main__":
-    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/cldice/origin_seg"
+    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/sammed3d/cldice/origin_seg"
     raw_dataset_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma"
 
     # work_dir = os.path.join(r"/data/kfchen/trace_ws", origin_seg_dir.split('/')[-1])
-    work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/cldice"
+    work_dir = "/data/kfchen/trace_ws/paper_trace_result/sammed3d/cldice"
     seg_dir = os.path.join(work_dir, "0_seg")
     name_mapping_file = os.path.join(raw_dataset_dir, "name_mapping.csv")
 
