@@ -131,7 +131,7 @@ def copy_file_from_seg_result(origin_seg_file, seg_dir, name_mapping_file):
         file_name = file_name.replace('_pred0.nii.gz', '.tif')
         tifffile.imwrite(os.path.join(seg_dir, file_name), seg, compression='zlib')
     else:
-        seg = tifffile.imread(new_file_path)
+        seg = tifffile.imread(origin_seg_file)
         seg = (np.where(seg > 0, 1, 0) * 255).astype("uint8")
         tifffile.imwrite(os.path.join(seg_dir, file_name), seg, compression='zlib')
 
@@ -143,7 +143,7 @@ def copy_file_from_seg_result(origin_seg_file, seg_dir, name_mapping_file):
     # rename the seg file
     new_file_path = os.path.join(seg_dir, full_name)
     os.rename(os.path.join(seg_dir, file_name), new_file_path)
-    print(new_file_path, "ok")
+    # print(new_file_path, "ok")
 
 
 def prepare_seg_files(origin_seg_dir, seg_dir, name_mapping_file):
@@ -326,11 +326,11 @@ class AutoTracePipeline(FileProcessingPipeline):
 
 
 if __name__ == "__main__":
-    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/sammed3d/cldice/origin_seg"
+    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/cldice/origin_seg"
     raw_dataset_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma"
 
     # work_dir = os.path.join(r"/data/kfchen/trace_ws", origin_seg_dir.split('/')[-1])
-    work_dir = "/data/kfchen/trace_ws/paper_trace_result/sammed3d/cldice"
+    work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/cldice"
     seg_dir = os.path.join(work_dir, "0_seg")
     name_mapping_file = os.path.join(raw_dataset_dir, "name_mapping.csv")
 

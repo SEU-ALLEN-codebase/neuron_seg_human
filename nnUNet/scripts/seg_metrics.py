@@ -880,7 +880,7 @@ def main_calc_metrics():
     #          box_file, labels=["nnUNet", "Proposed"])
 
 def calc_graded_metrics():
-    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/0_seg"
+    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/nnunet/cldice/0_seg"
     gt_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/label"
     soma_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/somamarker"
 
