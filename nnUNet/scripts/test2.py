@@ -326,11 +326,11 @@ class AutoTracePipeline(FileProcessingPipeline):
 
 
 if __name__ == "__main__":
-    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/cel/origin_seg"
+    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/skelrec_15/origin_seg"
     raw_dataset_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma"
 
     # work_dir = os.path.join(r"/data/kfchen/trace_ws", origin_seg_dir.split('/')[-1])
-    work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/cel"
+    work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/skelrec_15"
     seg_dir = os.path.join(work_dir, "0_seg")
     name_mapping_file = os.path.join(raw_dataset_dir, "name_mapping.csv")
 
