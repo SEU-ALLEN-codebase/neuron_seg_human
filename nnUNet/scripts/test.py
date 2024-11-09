@@ -18,6 +18,7 @@ from skimage.measure import regionprops, label
 from skimage.morphology import ball
 from skimage.morphology import skeletonize_3d
 from tqdm import tqdm
+import random
 
 # os.environ["CUDA_PATH"] = r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.2"
 
@@ -194,14 +195,27 @@ def skel_tif_file(file_name, tif_folder, skel_folder):
     if(os.path.exists(skel_path)):
         return
 
-    data = tifffile.imread(tif_path).astype("uint8")
-    skel = skeletonize_3d(data).astype("uint8")
+    tif = tifffile.imread(tif_path).astype("uint8")
+    tif =np.flip(tif, axis=1)
+    origin_size = get_origin_img_size(file_name, name_mapping_path)
+    # tif = tifffile.imread(tif_path)
+    # new_size = tif.shape
+    # x_ratio, y_ratio, z_ratio = origin_size[0] / new_size[2], origin_size[1] / new_size[1], origin_size[2] / new_size[0]
+    origin_size = (origin_size[2], origin_size[1], origin_size[0])
+    # resize
+    tif = skimage.transform.resize(tif, origin_size, order=0, anti_aliasing=False)
+
+
+    skel = skeletonize_3d(tif).astype("uint8")
     # skel = binary_dilation(skel, iterations=1).astype("uint8")
     tifffile.imwrite(skel_path, skel * 255, compression='zlib')
 
 
 def skel_tif_folder(tif_folder, skel_folder):
     file_names = [f for f in os.listdir(tif_folder) if f.endswith('.tif')]
+    # file_names = file_names[:10]
+    # random choose 10 files
+    # file_names = random.sample(file_names, 50)
     partial_func = partial(skel_tif_file, tif_folder=tif_folder, skel_folder=skel_folder)
     with Pool(pool_num) as p:
         for _ in tqdm(p.imap(partial_func, file_names),
@@ -524,6 +538,11 @@ def get_soma_regions_file(file_name, tif_folder, soma_folder, muti_soma_marker_f
         return
     tif_path = os.path.join(tif_folder, file_name)
     soma_region_path = os.path.join(soma_folder, os.path.splitext(file_name)[0] + '.tif')
+
+    # skel_path = os.path.join(skel_folder_path, os.path.splitext(file_name)[0] + '.tif')
+    # if(not os.path.exists(skel_path)):
+    #     return
+
     # muti_soma_marker_path = os.path.join(muti_soma_marker_folder, os.path.splitext(file_name)[0] + '.marker')
     muti_soma_marker_path = find_muti_soma_marker_file(file_name, muti_soma_marker_folder)
 
@@ -537,6 +556,12 @@ def get_soma_regions_file(file_name, tif_folder, soma_folder, muti_soma_marker_f
         return
     # binary
     soma_region = np.where(soma_region > 0, 1, 0).astype("uint8")
+    soma_region = np.flip(soma_region, axis=1)
+    origin_size = get_origin_img_size(file_name, name_mapping_path)
+    origin_size = (origin_size[2], origin_size[1], origin_size[0])
+    # resize
+    soma_region = skimage.transform.resize(soma_region, origin_size, order=0, anti_aliasing=False)
+
     tifffile.imwrite(soma_region_path, soma_region * 255, compression='zlib')
 
     if (do_mip):
@@ -579,7 +604,9 @@ def compute_centroid(mask):
     else:
         return None
 
-
+# import zoom
+import numpy as np
+from scipy.ndimage import zoom
 def get_somamarker_file(file_name, soma_folder, somamarker_folder, muti_soma_marker_folder, gm_soma_marker_folder):
     soma_path = os.path.join(soma_folder, file_name)
     somamarker_path = os.path.join(somamarker_folder, os.path.splitext(file_name)[0] + '.marker')
@@ -639,9 +666,15 @@ def get_somamarker_file(file_name, soma_folder, somamarker_folder, muti_soma_mar
         return
     else:
         soma_region = tifffile.imread(soma_path).astype("uint8")
+        print("soma region size", soma_region.shape, file_name)
+        origin_size = soma_region.shape
+        if(origin_size[2] > 1000):
+            soma_region = zoom(soma_region, (0.5, 0.5, 0.5), order=0)
         centroid = compute_centroid(soma_region)
         soma_x, soma_y, soma_z, soma_r = centroid[2], centroid[1], centroid[0], 1
-        soma_y = soma_region.shape[1] - soma_y
+        soma_y = soma_region.shape[1] - soma_y - 1
+        if (origin_size[2] > 1000):
+            soma_x, soma_y, soma_z, soma_r = soma_x * 2, soma_y * 2, soma_z * 2, 1
         # print(soma_x, soma_y, soma_z, soma_r)
         marker_str = f"{soma_x}, {soma_y}, {soma_z}, {soma_r}, 1, , , 255,0,0"
         with open(somamarker_path, 'w') as f:
@@ -1250,18 +1283,18 @@ def compare_tif(folder1, folder2, out_folder):
 
 def prepossessing():
     update_mutisoma_markers(newest_mutisoma_markers_folder_path)
-    remove_others_in_folder(tif_folder_path)
-    rename_tif_folder(tif_folder_path)
-    uint8_tif_folder(tif_folder_path)
+    # remove_others_in_folder(tif_folder_path)
+    # rename_tif_folder(tif_folder_path)
+    # uint8_tif_folder(tif_folder_path)
     # #
     # # # ###########adf_folder(tif_folder_path, adf_folder_path)
     # #
     # check_fp_ratio_folder(tif_folder_path)
     # time.sleep(100000)
     #
-    skel_tif_folder(tif_folder_path, skel_folder_path)
-    get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
-    get_skelwithsoma_folder(skel_folder_path, soma_folder_path, skelwithsoma_folder_path)
+    # skel_tif_folder(tif_folder_path, skel_folder_path)
+    # get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
+    # get_skelwithsoma_folder(skel_folder_path, soma_folder_path, skelwithsoma_folder_path)
     get_somamarker_folder(soma_folder_path, somamarker_folder_path, muti_soma_marker_folder_path,
                           gmsoma_marker_folder_path)
     pass
@@ -1296,7 +1329,7 @@ def tracing():
 def postprocessing():
     # gcut_folder(swc_folder_path, gmsoma_marker_folder_path, gcutswc_folder_path)
     connect_to_soma_folder(swc_folder_path, soma_folder_path, conn_folder_path)
-    to_v3dswc_folder(conn_folder_path, v3dswc_folder_path, tif_folder_path)
+    # to_v3dswc_folder(conn_folder_path, v3dswc_folder_path, tif_folder_path)
 
     swc_files = [f for f in os.listdir(v3dswc_folder_path) if f.endswith('.swc')]
     for swc_file in swc_files:
