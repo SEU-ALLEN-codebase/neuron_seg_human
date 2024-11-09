@@ -1292,9 +1292,9 @@ def prepossessing():
     # check_fp_ratio_folder(tif_folder_path)
     # time.sleep(100000)
     #
-    # skel_tif_folder(tif_folder_path, skel_folder_path)
-    # get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
-    # get_skelwithsoma_folder(skel_folder_path, soma_folder_path, skelwithsoma_folder_path)
+    skel_tif_folder(tif_folder_path, skel_folder_path)
+    get_soma_regions_folder(tif_folder_path, soma_folder_path, muti_soma_marker_folder_path)
+    get_skelwithsoma_folder(skel_folder_path, soma_folder_path, skelwithsoma_folder_path)
     get_somamarker_folder(soma_folder_path, somamarker_folder_path, muti_soma_marker_folder_path,
                           gmsoma_marker_folder_path)
     pass
