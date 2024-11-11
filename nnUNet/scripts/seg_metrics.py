@@ -824,7 +824,7 @@ def main_calc_metrics():
     # seg_folder = dataset_list['hb_seg_ptls']
     # gt_folder = dataset_list['hb_gt']
 
-    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/skelrec_15" + "/0_seg"
+    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/skelcel_no_tube" + "/0_seg"
     gt_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/label"
 
     # generate_mip_and_compare(dataset_list['hb_seg_baseline'], dataset_list['hb_seg_ptls'],
@@ -858,7 +858,7 @@ def main_calc_metrics():
           round(mean_c_relative_coverage, 4), round(mean_relative_foreground_ratio, 4), round(mean_broken_points, 4),
             round(mean_skel_acc, 4))
 
-    result_csv = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/skelrec_15" + "_seg_metrics.csv"
+    result_csv = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/skelcel_no_tube" + "_seg_metrics.csv"
     if(os.path.exists(result_csv)):
         os.remove(result_csv)
     # sort

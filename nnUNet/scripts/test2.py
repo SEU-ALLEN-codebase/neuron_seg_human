@@ -326,17 +326,18 @@ class AutoTracePipeline(FileProcessingPipeline):
 
 
 if __name__ == "__main__":
-    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/skelrec_15/origin_seg"
+    origin_seg_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/skelcel_no_tube//origin_seg"
     raw_dataset_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma"
 
     # work_dir = os.path.join(r"/data/kfchen/trace_ws", origin_seg_dir.split('/')[-1])
-    work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/skelrec_15"
+    work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/skelcel_no_tube/"
     seg_dir = os.path.join(work_dir, "0_seg")
     name_mapping_file = os.path.join(raw_dataset_dir, "name_mapping.csv")
 
     if(not os.path.exists(seg_dir)):
         prepare_seg_files(origin_seg_dir, seg_dir, name_mapping_file)
 
+    print("Data preparation is done.")
     pipeline_list = []
     file_names = [f for f in os.listdir(seg_dir) if f.endswith('.tif')]
     file_names = file_names[:10]

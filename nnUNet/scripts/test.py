@@ -71,15 +71,16 @@ result_folder_path = r"/data/kfchen/nnUNet/nnUNet_results/Dataset180_deflu_gamma
 
 trace_ws_path = r"/data/kfchen/trace_ws"
 # make dir for new result folder
-pred_path = os.path.join(trace_ws_path, str.split(result_folder_path, '/')[-1])
+# pred_path = os.path.join(trace_ws_path, str.split(result_folder_path, '/')[-1])
+pred_path = "/data/kfchen/trace_ws/to_hy"
 # print(pred_path)
 maybe_mkdir_p(pred_path)
 tif_folder_path = os.path.join(pred_path, "tif")
 # copy every thing in result folder to pred folder
-if(not os.path.exists(tif_folder_path) or len(os.listdir(tif_folder_path)) == 0):
-    if(os.path.exists(tif_folder_path)):
-        os.rmdir(tif_folder_path)
-    shutil.copytree(result_folder_path, tif_folder_path)
+# if(not os.path.exists(tif_folder_path) or len(os.listdir(tif_folder_path)) == 0):
+#     if(os.path.exists(tif_folder_path)):
+#         os.rmdir(tif_folder_path)
+#     shutil.copytree(result_folder_path, tif_folder_path)
 
 newest_mutisoma_markers_folder_path = os.path.join(pred_path, "newest_muti_soma_markers")
 comp_folder_path = os.path.join(pred_path, "comp")
@@ -102,9 +103,9 @@ gmsoma_marker_folder_path = os.path.join(pred_path, "gmsoma_markers")
 # muti_soma_marker_folder_path = r"E:\tracing_ws\10847\muti_soma_markers"
 muti_soma_marker_folder_path = r"/data/kfchen/trace_ws/muti_soma_markers"
 name_mapping_path = os.path.join(pred_path, "name_mapping.csv")
-if(os.path.exists(name_mapping_path)):
-    os.remove(name_mapping_path)
-shutil.copy(os.path.join(data_source_folder_path, "name_mapping.csv"), name_mapping_path)
+# if(os.path.exists(name_mapping_path)):
+#     os.remove(name_mapping_path)
+# shutil.copy(os.path.join(data_source_folder_path, "name_mapping.csv"), name_mapping_path)
 v3dswc_copy_folder_path = os.path.join(pred_path, "v3dswc_copy")
 
 # pbd_folder_path = r"D:\tracing_ws\dataset\test1223"
@@ -1180,7 +1181,7 @@ def connect_to_soma_folder(swc_folder, soma_folder, conn_folder):
 
 def get_origin_img_size(file_name, name_mapping_path):
     df = pd.read_csv(name_mapping_path)
-    full_name = file_name.replace('.swc', '')
+    full_name = file_name.replace('.swc', '').replace('.tif', '').replace('image_', '')
     try: # shape: xyz
         img_size = df[df['full_name'] == int(full_name)]['img_size'].values[0]
     except:
@@ -1283,9 +1284,9 @@ def compare_tif(folder1, folder2, out_folder):
 
 def prepossessing():
     update_mutisoma_markers(newest_mutisoma_markers_folder_path)
-    # remove_others_in_folder(tif_folder_path)
-    # rename_tif_folder(tif_folder_path)
-    # uint8_tif_folder(tif_folder_path)
+    remove_others_in_folder(tif_folder_path)
+    rename_tif_folder(tif_folder_path)
+    uint8_tif_folder(tif_folder_path)
     # #
     # # # ###########adf_folder(tif_folder_path, adf_folder_path)
     # #
