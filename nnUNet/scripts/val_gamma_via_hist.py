@@ -243,8 +243,8 @@ sns.set(style="whitegrid")
 low_range = int(0.33 * 128)
 high_range = int(0.33 * 128)
 
-plt.figure(figsize=(3, 6))
-plt.subplot(2, 1, 1)
+plt.figure(figsize=(9, 3))
+plt.subplot(1, 3, 1)
 
 
 # sns.histplot(x=bins, weights=hist1_sum, color='black', label='Folder 1', alpha=0, kde=True, bins=40)
@@ -261,7 +261,7 @@ plt.xlim(0, 0.33)
 # plt.legend()
 
 
-plt.subplot(2, 1, 2)
+plt.subplot(1, 3, 2)
 # sns.histplot(x=bins, weights=hist1_sum, color='black', label='Folder 1', alpha=0, kde=True, bins=40)
 # sns.histplot(x=bins, weights=hist2_sum, color='red', label='Folder 2', alpha=0, kde=True, bins=40)
 for i in range(4):
@@ -269,14 +269,14 @@ for i in range(4):
 plt.title('')
 plt.xlabel('Normalized Intensity')
 plt.ylabel('Normalized Frequency')
-plt.ylim(0, 10)
+plt.ylim(0, 15)
 plt.xlim(0.33, 1)
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()
 
 # plot mean intensity
-plt.figure(figsize=(3, 3))
+plt.subplot(1, 3, 3)
 # sns.lineplot(x=np.linspace(0, 1, 100), y=mi_hist_sum1/np.max(mi_hist_sum1), color='black', label='origin')
 # sns.lineplot(x=np.linspace(0, 1, 100), y=mi_hist_sum2/np.max(mi_hist_sum2), color='red', label='gamma')
 for i in range(4):
