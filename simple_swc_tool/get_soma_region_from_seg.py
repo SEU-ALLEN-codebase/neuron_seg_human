@@ -349,6 +349,7 @@ class SmartSomaRegionFinder():
         result_open_img = result_open_img * seg
         result_img = resize(result_open_img, origin_img_size, order=0)
         result_img = np.where(result_img > 0, 1, 0).astype(np.uint8)
+        return result_img
 
-        tifffile.imwrite(result_img_file, result_img, compression='zlib')
+        # tifffile.imwrite(result_img_file, result_img, compression='zlib')
 

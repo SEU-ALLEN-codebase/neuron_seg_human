@@ -20,6 +20,7 @@ import seaborn as sns
 
 from scipy.stats import ttest_ind
 import cv2
+import gudhi as gd
 
 def close_operation_3d(image, structure=None):
     """
@@ -121,6 +122,35 @@ def get_single_c_dice(seg, gt, target_cc_num):
     seg = find_largest_connected_components(seg, target_cc_num)
     return dice_coefficient(seg > 0, gt > 0)
 
+def cl_score(v, s):
+    """[this function computes the skeleton volume overlap]
+
+    Args:
+        v ([bool]): [image]
+        s ([bool]): [skeleton]
+
+    Returns:
+        [float]: [computed skeleton volume intersection]
+    """
+    return np.sum(v*s)/np.sum(s)
+
+def get_cldice(v_p, v_l):
+    """[this function computes the cldice metric]
+
+    Args:
+        v_p ([bool]): [predicted image]
+        v_l ([bool]): [ground truth image]
+
+    Returns:
+        [float]: [cldice metric]
+    """
+    v_p = np.where(v_p > 0, 1, 0)
+    v_l = np.where(v_l > 0, 1, 0)
+    tprec = cl_score(v_p,skeletonize_3d(v_l))
+    tsens = cl_score(v_l,skeletonize_3d(v_p))
+    result = 2*tprec*tsens/(tprec+tsens)
+    # print(tprec, tsens, result)
+    return result
 
 def get_fingures_single_result(seg_folder, gt_folder, seg_file, gt_file, target_cc_num):
     # Load the segmentation result and ground truth image
@@ -156,6 +186,8 @@ def get_fingures_single_result(seg_folder, gt_folder, seg_file, gt_file, target_
             get_relative_foreground_ratio(seg_data, gt_data),
             get_single_broken_points(seg_data, gt_data),
             get_skel_accuracy(seg_data, gt_data),
+            # calc_betti(seg_data),
+            get_cldice(seg_data, gt_data)
     )
 
 def calc_neuron_radius(img, x, y, z):
@@ -415,6 +447,22 @@ def compute_graded_metrics_for_all_pairs(seg_folder, gt_folder, soma_folder, tar
             results.append(future.result())
 
     return results
+
+def calc_betti(img):
+    rips_complex = gd.RipsComplex(points=np.array(np.nonzero(img)).T, max_edge_length = 1.5)
+
+    # 构建持久性同调对象
+    simplex_tree = rips_complex.create_simplex_tree(max_dimension=2)
+
+    # 计算持久性同调并获得 Betti 数字
+    persistence = simplex_tree.persistence()
+
+    # 计算 Betti 数字
+    betti_0 = simplex_tree.betti_number(0)  # 连通分量
+    betti_1 = simplex_tree.betti_number(1)  # 一维环
+
+    print(f"Betti 0: {betti_0}")  # 连通分量的数量
+    print(f"Betti 1: {betti_1}")  # 一维环的数量
 
 # 把nii.gz转成tif
 def nii2tif(nii_path, tif_path):
@@ -824,7 +872,7 @@ def main_calc_metrics():
     # seg_folder = dataset_list['hb_seg_ptls']
     # gt_folder = dataset_list['hb_gt']
 
-    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/newcel_0.1" + "/0_seg"
+    seg_folder = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/cldice" + "/0_seg"
     gt_folder = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/label"
 
     # generate_mip_and_compare(dataset_list['hb_seg_baseline'], dataset_list['hb_seg_ptls'],
@@ -843,6 +891,7 @@ def main_calc_metrics():
     mean_relative_foreground_ratio = np.mean([metrics[6] for metrics in all_metrics])
     mean_broken_points = np.mean([metrics[7] for metrics in all_metrics])
     mean_skel_acc = np.mean([metrics[8] for metrics in all_metrics])
+    mean_cldice = np.mean([metrics[9] for metrics in all_metrics])
 
     # 4位小数输出
     print("Mean Dice Coefficient:", round(mean_dice, 4))
@@ -853,23 +902,24 @@ def main_calc_metrics():
     print("Mean Relative Foreground Ratio:", round(mean_relative_foreground_ratio, 4))
     print("Mean Broken Points:", round(mean_broken_points, 4))
     print("Mean Skeleton Accuracy:", round(mean_skel_acc, 4))
+    print("Mean clDice:", round(mean_cldice, 4))
 
     print(round(mean_dice, 4), round(mean_overlap, 4), round(mean_c_dice, 4), round(mean_c_overlap, 4),
           round(mean_c_relative_coverage, 4), round(mean_relative_foreground_ratio, 4), round(mean_broken_points, 4),
-            round(mean_skel_acc, 4))
+            round(mean_skel_acc, 4), round(mean_cldice, 4))
 
-    result_csv = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/newcel_0.1" + "_seg_metrics.csv"
+    result_csv = "/data/kfchen/trace_ws/paper_trace_result/" + "nnunet/cldice" + "_seg_metrics.csv"
     if(os.path.exists(result_csv)):
         os.remove(result_csv)
     # sort
     all_metrics = sorted(all_metrics, key=lambda x: x[0])
     with open(result_csv, "w") as f:
-        f.write("ID,Dice,Overlap,C-Dice,C-Overlap,C-Relative Coverage,Relative Foreground Ratio,Broken Points,Skeleton Accuracy\n")
+        f.write("ID,Dice,Overlap,C-Dice,C-Overlap,C-Relative Coverage,Relative Foreground Ratio,Broken Points,Skeleton Accuracy,clDice\n")
         f.write(f"Mean,{round(mean_dice, 4)},{round(mean_overlap, 4)},{round(mean_c_dice, 4)},"
                 f"{round(mean_c_overlap, 4)},{round(mean_c_relative_coverage, 4)},{round(mean_relative_foreground_ratio, 4)},"
-                f"{round(mean_broken_points, 4)},{round(mean_skel_acc, 4)}\n")
+                f"{round(mean_broken_points, 4)},{round(mean_skel_acc, 4)},{round(mean_cldice, 4)}\n")
         for metrics in all_metrics:
-            f.write(f"{metrics[0]},{metrics[1]},{metrics[3]},{metrics[2]},{metrics[4]},{metrics[5]},{metrics[6]},{metrics[7]},{metrics[8]}\n")
+            f.write(f"{metrics[0]},{metrics[1]},{metrics[3]},{metrics[2]},{metrics[4]},{metrics[5]},{metrics[6]},{metrics[7]},{metrics[8]},{metrics[9]}\n")
 
 
 

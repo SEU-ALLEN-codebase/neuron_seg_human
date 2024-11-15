@@ -196,7 +196,7 @@ def plot_violin(df_a, df_b, violin_file, labels=['GS', 'Auto']):
 
 
 
-def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
+def plot_box(df_a, df_b, box_file, labels=[]):
     # feature_names = ['N_node', 'Soma_surface', 'N_stem', 'Number of Bifurcatons',
     #                 'Number of Branches', 'Number of Tips', 'Overall Width', 'Overall Height',
     #                 'Overall Depth', 'Average Diameter', 'Total Length', 'Total Surface',
@@ -244,6 +244,57 @@ def plot_box(df_a, df_b, box_file, labels=['GS', 'Auto']):
         ax.axis('off')
 
     plt.tight_layout(pad=1.0)  # 调整布局
+    plt.savefig(box_file)
+    plt.close()
+
+def plot_box_of_swc_list(l_measure_files, labels, box_file):
+    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length']
+    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
+                         'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
+                         'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
+
+    num_features = len(feature_names)
+    cols = 4
+    rows = (num_features + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*3, 3 * rows))  # 调整figsize和dpi提高清晰度
+    axes = axes.flatten()
+    # plt.rcParams.update({'font.size': 20})  # 更新字体大小
+    # 设置字体 Arial
+    # plt.rcParams['font.family'] = 'Arial'
+
+    dfs = [pd.read_csv(f) for f in l_measure_files]
+    for i, df in enumerate(dfs):
+        df['Type'] = labels[i]
+
+    df = pd.concat(dfs, axis=0)
+    df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
+
+    # 绘图
+    for idx, feature in enumerate(feature_names):
+        ax = axes[idx]
+        if feature == 'Number of Branches':
+            ax.set_ylim(-1.5, 150)
+        elif feature == 'Total Length':
+            ax.set_ylim(-50, 5000)
+        sns.boxplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], ax=ax,
+                    palette="viridis", gap=.2, fliersize=0, native_scale=True)
+        # ax.set_title(feature_name_maps[feature], fontsize=15)
+        ax.set_title("")
+
+        ax.set_ylabel('')
+        ax.get_xaxis().set_visible(False)
+        # ax.get_xaxis().set_ticks([])
+        ax.tick_params(axis='both', which='major')  # 调整刻度标签大小
+        ax.legend().set_visible(False)
+        ax.set_ylabel(feature_name_maps[feature])
+
+
+    # 隐藏不需要的子图
+    for ax in axes[num_features:]:
+        ax.axis('off')
+
+    plt.tight_layout(pad=1.0)  # 调整布局
+    plt.show()
     plt.savefig(box_file)
     plt.close()
 
@@ -538,18 +589,31 @@ def l_measure_swc_dir(swc_dir, result_csv, v3d_path = r"/home/kfchen/Vaa3D-x.1.1
 
 if __name__ == '__main__':
     v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
+    net_work_list = ["nnunet"]
+    loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
+    swc_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/7_scaled_1um_swc" for loss in loss_list]
 
-    swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500"
-    result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500.csv"
+    for swc_dir in swc_dir_list:
+        result_csv = swc_dir + "_l_measure.csv"
+        if(not os.path.exists(result_csv)):
+            l_measure_swc_dir(swc_dir, result_csv, v3d_path)
+
+    plot_box_of_swc_list([swc_dir + "_l_measure.csv" for swc_dir in swc_dir_list],
+                         ['Baseline', 'clDice', 'SkelRec', 'Proposed'],
+                         "/data/kfchen/trace_ws/paper_trace_result/nnunet/box.png")
+
+
+    # swc_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/7_scaled_1um_swc"
+    # result_csv = swc_dir + "_l_measure.csv"
     # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
 
-    swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10"
-    result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv"
-    # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
-
-    plot_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/hist.png"
-    df_a = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/gt_swc.csv")
-    df_b = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/pred_swc.csv")
-    plot_violin(df_a, df_b, plot_file, labels=['Baseline', 'Gamma'])
-    plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
+    # swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10"
+    # result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv"
+    # # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
+    #
+    # plot_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/hist.png"
+    # df_a = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/gt_swc.csv")
+    # df_b = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/pred_swc.csv")
+    # plot_violin(df_a, df_b, plot_file, labels=['Baseline', 'Gamma'])
+    # plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
     # plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])

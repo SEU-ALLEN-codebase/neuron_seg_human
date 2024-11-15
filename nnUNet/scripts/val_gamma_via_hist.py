@@ -9,6 +9,9 @@ from skimage import exposure
 from tqdm import tqdm
 
 from scipy.stats import gaussian_kde
+from skimage import io
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 def quick_soma_from_seg(seg):
     # 进行距离变换
@@ -56,18 +59,86 @@ def calc_dt_from_soma(img, soma_coord):
     return binned_intensity
 
 def get_gamma_img(img):
-    return exposure.adjust_gamma(img, gamma=0.7)
+    img = exposure.adjust_gamma(img, gamma=0.7)
+    img = exposure.equalize_adapthist(img, clip_limit=0.02, nbins=256)
+    img = (img - img.min()) / (img.max() - img.min())
+    return img
 
 def get_equalize_img(img):
-    return exposure.equalize_hist(img)
+    img = exposure.equalize_adapthist(img, clip_limit=0.02, nbins=256)
+    img = (img - img.min()) / (img.max() - img.min())
+    return img
 
 # 指定两个文件夹路径
-folder1 = r'/data/kfchen/nnUNet/nnUNet_raw/Dataset169_hb_10k/imagesTr'
+folder1 = r'/data/kfchen/nnUNet/nnUNet_raw/Dataset175_14k_hb_neuron_aug_pure/imagesTr'
 folder2 = r'/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma/imagesTr'
 label_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma/labelsTr"
-save_dir = r'/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma'
+save_dir = r'/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma/full_com_gamma_0.7'
+# mip_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma/full_com_gamma_0.7/mip"
 
-if(not os.path.exists(os.path.join(save_dir, 'hist1_sum.npy'))):
+# 用于更新进度条的回调函数
+def update_pbar(pbar, value):
+    pbar.update(value)
+
+
+# 处理每个文件的函数
+def process_file(file_name, label_dir, folder1, folder2):
+    lab_file = io.imread(os.path.join(label_dir, file_name.replace("_0000.tif", ".tif")))
+    soma_coord = quick_soma_from_seg(lab_file)
+
+    img_list = [
+        io.imread(os.path.join(folder1, file_name)),
+        io.imread(os.path.join(folder2, file_name))
+    ]
+
+    img_list = [f.astype("float32") for f in img_list]
+    img_list = [(f - f.min()) / (f.max() - f.min()) for f in img_list]
+
+    img_list.append(get_gamma_img(img_list[0]))
+    img_list.append(get_equalize_img(img_list[0]))
+
+    img_list = [(f * 255).astype(np.uint8) for f in img_list]
+
+    # 更新直方图和平均强度值
+    local_hist_sum = [np.zeros(128) for _ in range(4)]
+    local_mi_hist_sum = [np.zeros(100) for _ in range(4)]
+
+    for i, img in enumerate(img_list):
+        current_hist, _ = np.histogram(img.ravel(), bins=128, range=(0, 256), density=True)
+        local_hist_sum[i] += current_hist
+
+        current_mean_intensity = calc_dt_from_soma(img, soma_coord)
+        local_mi_hist_sum[i] += current_mean_intensity
+
+    return local_hist_sum, local_mi_hist_sum
+
+
+# 主执行函数
+def process_files_in_parallel(common_files, label_dir, folder1, folder2):
+    pbar = tqdm(total=len(common_files))
+
+    # 线程池执行任务
+    with ThreadPoolExecutor() as executor:
+        futures = {}
+        for file_name in common_files:
+            futures[executor.submit(process_file, file_name, label_dir, folder1, folder2)] = file_name
+
+        # 等待所有线程完成
+        for future in as_completed(futures):
+            local_hist_sum, local_mi_hist_sum = future.result()
+
+            # 更新全局变量
+            for i in range(4):
+                hist_sum_list[i] += local_hist_sum[i]
+                mi_hist_sum_list[i] += local_mi_hist_sum[i]
+
+            # 更新进度条
+            update_pbar(pbar, 1)
+
+    pbar.close()
+
+
+if(not os.path.exists(os.path.join(save_dir, 'hist_sum1.npy'))):
     # 获取两个文件夹中的所有文件名
     files1 = set(f for f in os.listdir(folder1) if f.endswith('.tif'))
     files2 = set(f for f in os.listdir(folder2) if f.endswith('.tif'))
@@ -76,164 +147,77 @@ if(not os.path.exists(os.path.join(save_dir, 'hist1_sum.npy'))):
     common_files = files1.intersection(files2)
     # sort
     common_files = sorted(list(common_files))
-    # common_files = common_files[:1]
-
-    # 初始化累计直方图和频率信息
-    hist1_sum = np.zeros(128)
-    hist2_sum = np.zeros(128)
-    cumulative_low_freq1 = 0
-    cumulative_low_freq2 = 0
-    cumulative_high_freq1 = 0
-    cumulative_high_freq2 = 0
-
-    # 初始化用于存储平均强度结果
-    mean_intensities1 = []
-    mean_intensities2 = []
-    mi_hist_sum1 = np.zeros(100)
-    mi_hist_sum2 = np.zeros(100)
-
-
-    # 遍历同名的图像对并绘制MIP对照图和直方图
-    for file_name in common_files:
-        # print(file_name)
-        # 读取图像
-        image1 = io.imread(os.path.join(folder1, file_name))
-        image2 = io.imread(os.path.join(folder2, file_name))
-
-        image1 = image1.astype(np.float32)
-        image2 = image2.astype(np.float32)
-
-        image1 = (image1 - image1.min()) / (image1.max() - image1.min()) * 255
-        image2 = (image2 - image2.min()) / (image2.max() - image2.min()) * 255
-
-        # 计算全图的直方图
-        hist1, _ = np.histogram(image1.ravel(), bins=128, range=(0, 256), density=True)
-        hist2, _ = np.histogram(image2.ravel(), bins=128, range=(0, 256), density=True)
-
-        # 累加直方图
-        hist1_sum += hist1
-        hist2_sum += hist2
-
-        lab_file = io.imread(os.path.join(label_dir, file_name.replace("_0000.tif", ".tif")))
-        soma_coord = quick_soma_from_seg(lab_file)
-        # print(soma_coord)
-        mean_intensity1 = calc_dt_from_soma(image1, soma_coord)
-        mean_intensity2 = calc_dt_from_soma(image2, soma_coord)
-        mi_hist_sum1 += mean_intensity1
-        mi_hist_sum2 += mean_intensity2
-
-
-        mean_intensities1.append(mean_intensity1)
-        mean_intensities2.append(mean_intensity2)
-
-        #
-        # # 计算低灰度区域的累计频率（例如灰度值0-50）
-        # low_intensity_threshold1 = int(255*0.2)
-        # low_intensity_threshold2 = int(255*0.9)
-        # cumulative_low_freq1 += np.sum(hist1[low_intensity_threshold1:low_intensity_threshold2])
-        # cumulative_low_freq2 += np.sum(hist2[low_intensity_threshold1:low_intensity_threshold2])
-        #
-        # # 计算高灰度区域的累计频率（例如灰度值200-255）
-        # high_intensity_threshold1 = int(0.9 * 255)
-        # high_intensity_threshold2 = int(1.0 * 255)
-        # cumulative_high_freq1 += np.sum(hist1[high_intensity_threshold1:high_intensity_threshold2])
-        # cumulative_high_freq2 += np.sum(hist2[high_intensity_threshold1:high_intensity_threshold2])
-
-
+    # common_files = common_files[:20]
+    hist_sum_list = [np.zeros(128) for i in range(4)]
+    mi_hist_sum_list = [np.zeros(100) for i in range(4)]
+    #
+    # pbar = tqdm(total=len(common_files))
+    # # 遍历同名的图像对并绘制MIP对照图和直方图
+    # for file_name in common_files:
+    #     pbar.update(1)
+    #     lab_file = io.imread(os.path.join(label_dir, file_name.replace("_0000.tif", ".tif")))
+    #     soma_coord = quick_soma_from_seg(lab_file)
+    #
+    #     img_list = [
+    #         io.imread(os.path.join(folder1, file_name)),
+    #         io.imread(os.path.join(folder2, file_name))
+    #     ]
+    #
+    #     img_list = [f.astype("float32") for f in img_list]
+    #     img_list = [(f - f.min()) / (f.max() - f.min()) for f in img_list]
+    #
+    #     img_list.append(get_gamma_img(img_list[0]))
+    #     img_list.append(get_equalize_img(img_list[0]))
+    #
+    #     img_list = [(f * 255).astype(np.uint8) for f in img_list]
+    #
+    #     for i, img in enumerate(img_list):
+    #         current_hist, _ = np.histogram(img.ravel(), bins=128, range=(0, 256), density=True)
+    #         hist_sum_list[i] += current_hist
+    #
+    #         current_mean_intensity = calc_dt_from_soma(img, soma_coord)
+    #         mi_hist_sum_list[i] += current_mean_intensity
+    # pbar.close()
     # save data
-    np.save(os.path.join(save_dir, 'hist1_sum.npy'), hist1_sum)
-    np.save(os.path.join(save_dir, 'hist2_sum.npy'), hist2_sum)
-    np.save(os.path.join(save_dir, 'mi_hist_sum1.npy'), mi_hist_sum1)
-    np.save(os.path.join(save_dir, 'mi_hist_sum2.npy'), mi_hist_sum2)
+
+    pbar = tqdm(total=len(common_files))
+
+    # 线程池执行任务
+    with ThreadPoolExecutor() as executor:
+        futures = {}
+        for file_name in common_files:
+            futures[executor.submit(process_file, file_name, label_dir, folder1, folder2)] = file_name
+
+        # 等待所有线程完成
+        for future in as_completed(futures):
+            local_hist_sum, local_mi_hist_sum = future.result()
+
+            # 更新全局变量
+            for i in range(4):
+                hist_sum_list[i] += local_hist_sum[i]
+                mi_hist_sum_list[i] += local_mi_hist_sum[i]
+
+            # 更新进度条
+            update_pbar(pbar, 1)
+
+    pbar.close()
+
+    for i in range(4):
+        np.save(os.path.join(save_dir, 'hist_sum'  + str(i) + '.npy'), hist_sum_list[i])
+        np.save(os.path.join(save_dir, 'mi_hist_sum' + str(i) + '.npy'), mi_hist_sum_list[i])
 else:
     print("data 1 and 2 already exists")
 
-if(not os.path.exists(os.path.join(save_dir, 'hist3_sum.npy'))):
-    # 获取两个文件夹中的所有文件名
-    files1 = set(f for f in os.listdir(folder1) if f.endswith('.tif'))
-    files2 = set(f for f in os.listdir(folder2) if f.endswith('.tif'))
-
-    # 找到同名的图像对
-    common_files = files1.intersection(files2)
-    # sort
-    common_files = sorted(list(common_files))
-    # common_files = common_files[:10]
-
-    # 初始化累计直方图和频率信息
-    hist1_sum = np.zeros(128)
-    hist2_sum = np.zeros(128)
-
-    # 初始化用于存储平均强度结果
-    mean_intensities1 = []
-    mean_intensities2 = []
-    mi_hist_sum1 = np.zeros(100)
-    mi_hist_sum2 = np.zeros(100)
-
-    # 进度条
-    pbar = tqdm(total=len(common_files))
-    # 遍历同名的图像对并绘制MIP对照图和直方图
-    for file_name in common_files:
-        # 进度条
-        pbar.update(1)
-
-        # print(file_name)
-        # 读取图像
-        image0 = io.imread(os.path.join(folder1, file_name))
-        image0 = image0.astype(np.float32)
-        image0 = (image0 - image0.min()) / (image0.max() - image0.min())
-
-        image1 = get_gamma_img(image0)
-        image2 = get_equalize_img(image0)
-
-        image1 = (image1 - image1.min()) / (image1.max() - image1.min()) * 255
-        image2 = (image2 - image2.min()) / (image2.max() - image2.min()) * 255
-
-        # 计算全图的直方图
-        hist1, _ = np.histogram(image1.ravel(), bins=128, range=(0, 256), density=True)
-        hist2, _ = np.histogram(image2.ravel(), bins=128, range=(0, 256), density=True)
-
-        # 累加直方图
-        hist1_sum += hist1
-        hist2_sum += hist2
-
-        lab_file = io.imread(os.path.join(label_dir, file_name.replace("_0000.tif", ".tif")))
-        soma_coord = quick_soma_from_seg(lab_file)
-        # print(soma_coord)
-        mean_intensity1 = calc_dt_from_soma(image1, soma_coord)
-        mean_intensity2 = calc_dt_from_soma(image2, soma_coord)
-        mi_hist_sum1 += mean_intensity1
-        mi_hist_sum2 += mean_intensity2
-
-        mean_intensities1.append(mean_intensity1)
-        mean_intensities2.append(mean_intensity2)
-
-    # 进度条
-    pbar.close()
-    # save data
-    np.save(os.path.join(save_dir, 'hist3_sum.npy'), hist1_sum)
-    np.save(os.path.join(save_dir, 'hist4_sum.npy'), hist2_sum)
-    np.save(os.path.join(save_dir, 'mi_hist_sum3.npy'), mi_hist_sum1)
-    np.save(os.path.join(save_dir, 'mi_hist_sum4.npy'), mi_hist_sum2)
-else:
-    print("data 3 and 4 already exists")
-
-
 
 print("find data")
-# load data
-hist1_sum = np.load(os.path.join(save_dir, 'hist1_sum.npy'))
-hist2_sum = np.load(os.path.join(save_dir, 'hist2_sum.npy'))
-hist3_sum = np.load(os.path.join(save_dir, 'hist3_sum.npy'))
-hist4_sum = np.load(os.path.join(save_dir, 'hist4_sum.npy'))
-mi_hist_sum1 = np.load(os.path.join(save_dir, 'mi_hist_sum1.npy'))
-mi_hist_sum2 = np.load(os.path.join(save_dir, 'mi_hist_sum2.npy'))
-mi_hist_sum3 = np.load(os.path.join(save_dir, 'mi_hist_sum3.npy'))
-mi_hist_sum4 = np.load(os.path.join(save_dir, 'mi_hist_sum4.npy'))
 
-hist_sum_list = [hist1_sum, hist2_sum, hist3_sum, hist4_sum]
-mi_hist_sum_list = [mi_hist_sum1, mi_hist_sum2, mi_hist_sum3, mi_hist_sum4]
+hist_sum_list, mi_hist_sum_list = [], []
+for i in range(4):
+    hist_sum_list.append(np.load(os.path.join(save_dir, 'hist_sum'  + str(i) + '.npy')))
+    mi_hist_sum_list.append(np.load(os.path.join(save_dir, 'mi_hist_sum' + str(i) + '.npy')))
+
 color_list = ['black', 'red', 'blue', 'green']
-label_list = ['origin', 'adaptive_gamma', 'global_gamma', 'equalize']
+label_list = ['Raw', 'Adaptive_gamma', 'Global_gamma', 'Equalization']
 
 # 绘制两个文件夹的全图直方图和累计频率信息
 bins = np.linspace(0, 1, 128)
@@ -242,9 +226,8 @@ sns.set(style="whitegrid")
 # 绘制0-33%和66-100%最大强度的直方图
 low_range = int(0.33 * 128)
 high_range = int(0.33 * 128)
-
 plt.figure(figsize=(9, 3))
-plt.subplot(1, 3, 1)
+plt.subplot(1, 2, 1)
 
 
 # sns.histplot(x=bins, weights=hist1_sum, color='black', label='Folder 1', alpha=0, kde=True, bins=40)
@@ -252,31 +235,31 @@ plt.subplot(1, 3, 1)
 for i in range(4):
     print(len(hist_sum_list[i]))
 for i in range(4):
-    sns.histplot(x=bins, weights=hist_sum_list[i], color=color_list[i], label=label_list[i], alpha=0, kde=True, bins=40)
+    sns.histplot(x=bins, weights=hist_sum_list[i]/1.28, color=color_list[i], label=label_list[i], alpha=0, kde=True, bins=40)
 plt.title('')
 plt.xlabel('Normalized Intensity')
 plt.ylabel('Normalized Frequency')
-plt.ylim(0, 80)
-plt.xlim(0, 0.33)
+plt.ylim(0, 90)
+# plt.xlim(0, 0.33)
 # plt.legend()
 
 
-plt.subplot(1, 3, 2)
-# sns.histplot(x=bins, weights=hist1_sum, color='black', label='Folder 1', alpha=0, kde=True, bins=40)
-# sns.histplot(x=bins, weights=hist2_sum, color='red', label='Folder 2', alpha=0, kde=True, bins=40)
-for i in range(4):
-    sns.histplot(x=bins, weights=hist_sum_list[i], color=color_list[i], label=label_list[i], alpha=0, kde=True, bins=40)
-plt.title('')
-plt.xlabel('Normalized Intensity')
-plt.ylabel('Normalized Frequency')
-plt.ylim(0, 15)
-plt.xlim(0.33, 1)
+# plt.subplot(1, 3, 2)
+# # sns.histplot(x=bins, weights=hist1_sum, color='black', label='Folder 1', alpha=0, kde=True, bins=40)
+# # sns.histplot(x=bins, weights=hist2_sum, color='red', label='Folder 2', alpha=0, kde=True, bins=40)
+# for i in range(4):
+#     sns.histplot(x=bins, weights=hist_sum_list[i], color=color_list[i], label=label_list[i], alpha=0, kde=True, bins=40)
+# plt.title('')
+# plt.xlabel('Normalized Intensity')
+# plt.ylabel('Normalized Frequency')
+# plt.ylim(0, 15)
+# plt.xlim(0.33, 1)
 
 # plt.tight_layout()
 # plt.show()
 
 # plot mean intensity
-plt.subplot(1, 3, 3)
+plt.subplot(1, 2, 2)
 # sns.lineplot(x=np.linspace(0, 1, 100), y=mi_hist_sum1/np.max(mi_hist_sum1), color='black', label='origin')
 # sns.lineplot(x=np.linspace(0, 1, 100), y=mi_hist_sum2/np.max(mi_hist_sum2), color='red', label='gamma')
 for i in range(4):
@@ -284,9 +267,13 @@ for i in range(4):
 plt.title('')
 plt.xlabel('Normolized Dist from Soma')
 plt.ylabel('Normolized Mean Intensity')
-# plt.legend()
-plt.tight_layout()
-plt.show()
+plt.legend()
+# plt.legend().set_visible(False)
+
+fig = plt.gcf()  # 获取当前图形对象
+# fig.legend(label_list, loc='upper center', bbox_to_anchor=(0.5, 0.2), ncol=2)
+fig.tight_layout()
+fig.show()
 
 
 # 显示累计频率信息
