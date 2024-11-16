@@ -16,8 +16,8 @@ def find_resolution(df, filename):
 
 csv_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv"
 df = pd.read_csv(csv_file, encoding='gbk')
-swc_dir = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/recon/source500"
-unified_swc_dir = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/source500"
+swc_dir = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/2_flip_after_sort"
+unified_swc_dir = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab"
 if(not os.path.exists(unified_swc_dir)):
     os.makedirs(unified_swc_dir)
 

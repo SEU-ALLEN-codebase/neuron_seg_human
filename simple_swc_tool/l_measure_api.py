@@ -247,6 +247,24 @@ def plot_box(df_a, df_b, box_file, labels=[]):
     plt.savefig(box_file)
     plt.close()
 
+def get_common_rows_from_dfs(dfs):
+    # 获取所有 DataFrame 第一列的共同项
+    # 假设 df 列名为 'col1'
+    common_items = set(dfs[0].iloc[:, 0])  # 假设所有 DataFrame 第一列都是一样的列名
+    for df in dfs[1:]:
+        common_items &= set(df.iloc[:, 0])  # 交集操作，找出共同的元素
+
+    # 将共有项作为索引过滤每个 DataFrame
+    common_df_list = []
+    for df in dfs:
+        filtered_df = df[df.iloc[:, 0].isin(common_items)]  # 根据第一列的共有项筛选
+        # 找到有多少行
+        print(len(filtered_df))
+        common_df_list.append(filtered_df)
+
+    # 返回包含共同项的所有 DataFrame
+    return common_df_list
+
 def plot_box_of_swc_list(l_measure_files, labels, box_file):
     feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length']
     feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
@@ -263,6 +281,7 @@ def plot_box_of_swc_list(l_measure_files, labels, box_file):
     # plt.rcParams['font.family'] = 'Arial'
 
     dfs = [pd.read_csv(f) for f in l_measure_files]
+    dfs = get_common_rows_from_dfs(dfs)
     for i, df in enumerate(dfs):
         df['Type'] = labels[i]
 
@@ -592,6 +611,7 @@ if __name__ == '__main__':
     net_work_list = ["nnunet"]
     loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
     swc_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/7_scaled_1um_swc" for loss in loss_list]
+    swc_dir_list.append("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab")
 
     for swc_dir in swc_dir_list:
         result_csv = swc_dir + "_l_measure.csv"
@@ -599,7 +619,7 @@ if __name__ == '__main__':
             l_measure_swc_dir(swc_dir, result_csv, v3d_path)
 
     plot_box_of_swc_list([swc_dir + "_l_measure.csv" for swc_dir in swc_dir_list],
-                         ['Baseline', 'clDice', 'SkelRec', 'Proposed'],
+                         ['Baseline', 'clDice', 'SkelRec', 'Proposed', "Label"],
                          "/data/kfchen/trace_ws/paper_trace_result/nnunet/box.png")
 
 
