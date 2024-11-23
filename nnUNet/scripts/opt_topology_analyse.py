@@ -17,7 +17,9 @@ def main_opt(G_gt_path, out_dir):
     G_pred_path = os.path.join(out_dir, out_swc_name)
     if (not os.path.exists(G_pred_path)):
         return result_list, failed_files
-    result_list.append(os.path.split(G_gt_path)[-1]) # ["ID"]
+    id = os.path.split(G_gt_path)[-1].split(".")[0].split("_")[0]
+    id = str(int(id))
+    result_list.append(id) # ["ID"]
 
     G_gt = md.load_graph_swc(G_gt_path)
     G_pred = md.load_graph_swc(G_pred_path)
@@ -67,60 +69,49 @@ def main_opt(G_gt_path, out_dir):
     # print(result_list)
     return result_list, failed_files
 
-if __name__ == '__main__':
-    num_false_set = [1, 5, 10, 15, 20, 25, 30, 35, 40]
-
-    # gt_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_GS"
-    # out_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_Auto"
-    gt_dir = r"/data/kfchen/New Folder/to_Kaifeng/final_doubleChecked_annotation"
-    out_dir = r"/data/kfchen/New Folder/to_Kaifeng/final_oneChecked_annotation"
-    img_dir = r"/data/kfchen/trace_ws/to_gu/img"
-    save_path = r"/data/kfchen/New Folder/to_Kaifeng/result.txt"
-    csv_file = '/data/kfchen/New Folder/to_Kaifeng/opt_result.csv'
-
-
-    flip_flag = False
-    if(flip_flag):
-        csv_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv"
-        df = pd.read_csv(csv_file, encoding='gbk')
-        from nnUNet.scripts.resolution_unifier import find_resolution
-        fliped_out_dir = out_dir.replace("Auto", "Auto_fliped")
-        if(not os.path.exists(fliped_out_dir)):
-            os.makedirs(fliped_out_dir)
-        swc_files = glob.glob(os.path.join(out_dir, '*.swc'))
-        for swc_file in swc_files:
-            fliped_swc_file = swc_file.replace("Auto", "Auto_fliped")
-            if(os.path.exists(fliped_swc_file)):
-                continue
-            img_file = os.path.join(img_dir, os.path.split(swc_file)[-1].replace(".swc", ".tif"))
-            img = tifffile.imread(img_file)
-            xy_resolution = find_resolution(df, os.path.split(swc_file)[-1])
-            result_lines = []
-            with open(swc_file, 'r') as f:
-                lines = f.readlines()
-                for line in lines:
-                    if line.startswith("#"):
-                        result_lines.append(line)
-                    else:
-                        line = line.strip().split()
-                        y = img.shape[1] * xy_resolution / 1000 - float(line[3])
-                        result_lines.append(f"{line[0]} {line[1]} {line[2]} {y} {line[4]} {line[5]} {line[6]}\n")
-            with open(fliped_swc_file, 'w') as f:
-                f.writelines(result_lines)
-        out_dir = fliped_out_dir
-    rename_flag = True
-    if(rename_flag):
-        swc_files = glob.glob(os.path.join(out_dir, '*.swc'))
-        for swc_file in swc_files:
-            new_swc_file = str(int(swc_file.split("/")[-1].split("_")[0])) + ".swc"
-            # print(new_swc_file)
-            os.rename(swc_file, os.path.join(out_dir, new_swc_file))
-
-        # swc_files = glob.glob(os.path.join(gt_dir, '*.swc'))
-        # for swc_file in swc_files:
-        #     new_swc_file = str(int(swc_file.split("/")[-1].split("_")[0])) + ".swc"
-        #     # print(new_swc_file)
-        #     os.rename(swc_file, os.path.join(gt_dir, new_swc_file))
+def my_opt(G_gt_path, out_dir, csv_file):
+    # flip_flag = False
+    # if (flip_flag):
+    #     csv_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv"
+    #     df = pd.read_csv(csv_file, encoding='gbk')
+    #     from nnUNet.scripts.resolution_unifier import find_resolution
+    #     fliped_out_dir = out_dir.replace("Auto", "Auto_fliped")
+    #     if (not os.path.exists(fliped_out_dir)):
+    #         os.makedirs(fliped_out_dir)
+    #     swc_files = glob.glob(os.path.join(out_dir, '*.swc'))
+    #     for swc_file in swc_files:
+    #         fliped_swc_file = swc_file.replace("Auto", "Auto_fliped")
+    #         if (os.path.exists(fliped_swc_file)):
+    #             continue
+    #         img_file = os.path.join(img_dir, os.path.split(swc_file)[-1].replace(".swc", ".tif"))
+    #         img = tifffile.imread(img_file)
+    #         xy_resolution = find_resolution(df, os.path.split(swc_file)[-1])
+    #         result_lines = []
+    #         with open(swc_file, 'r') as f:
+    #             lines = f.readlines()
+    #             for line in lines:
+    #                 if line.startswith("#"):
+    #                     result_lines.append(line)
+    #                 else:
+    #                     line = line.strip().split()
+    #                     y = img.shape[1] * xy_resolution / 1000 - float(line[3])
+    #                     result_lines.append(f"{line[0]} {line[1]} {line[2]} {y} {line[4]} {line[5]} {line[6]}\n")
+    #         with open(fliped_swc_file, 'w') as f:
+    #             f.writelines(result_lines)
+    #     out_dir = fliped_out_dir
+    # rename_flag = False
+    # if (rename_flag):
+    #     swc_files = glob.glob(os.path.join(out_dir, '*.swc'))
+    #     for swc_file in swc_files:
+    #         new_swc_file = str(int(swc_file.split("/")[-1].split("_")[0])) + ".swc"
+    #         # print(new_swc_file)
+    #         os.rename(swc_file, os.path.join(out_dir, new_swc_file))
+    #
+    #     # swc_files = glob.glob(os.path.join(gt_dir, '*.swc'))
+    #     # for swc_file in swc_files:
+    #     #     new_swc_file = str(int(swc_file.split("/")[-1].split("_")[0])) + ".swc"
+    #     #     # print(new_swc_file)
+    #     #     os.rename(swc_file, os.path.join(gt_dir, new_swc_file))
 
     result_dict = {
         "ID": [],
@@ -140,6 +131,7 @@ if __name__ == '__main__':
     result_list = []
     failed_files = []
     swc_files = glob.glob(os.path.join(gt_dir, '*.swc'))
+    # swc_files = swc_files[:10]
 
     # for G_gt_path in swc_files:  # 读所有的swc文件
     #     result_list, failed_files = main_opt(G_gt_path, out_dir, result_list, failed_files)
@@ -152,8 +144,8 @@ if __name__ == '__main__':
             progress.update(1)  # 更新进度条
             try:
                 res_list, fail_files = future.result()
-                if(not res_list == []):result_list.append(res_list)
-                if(not fail_files == []):failed_files.append(fail_files)
+                if (not res_list == []): result_list.append(res_list)
+                if (not fail_files == []): failed_files.append(fail_files)
             except Exception as e:
                 print(f"Error processing file {future_to_file[future]}: {e}")
         progress.close()
@@ -172,7 +164,6 @@ if __name__ == '__main__':
         result_dict["optg_missings"].append(result[8])
         result_dict["optg_f1"].append(result[9])
 
-
     print("mean optj_precision: ", np.mean(result_dict["optj_precision"]),
           "mean optj_recall: ", np.mean(result_dict["optj_recall"]),
           "mean optj_f1: ", np.mean(result_dict["optj_f1"]))
@@ -185,9 +176,9 @@ if __name__ == '__main__':
 
     print("failed_files: ", failed_files)
 
-
     with open(csv_file, 'w') as f:
-        f.write("ID,optj_precision,optj_recall,optj_f1,optp_con_prob_precis,optp_con_prob_recall,optp_con_prob_f1,optg_spurious,optg_missings,optg_f1\n")
+        f.write(
+            "ID,optj_precision,optj_recall,optj_f1,optp_con_prob_precis,optp_con_prob_recall,optp_con_prob_f1,optg_spurious,optg_missings,optg_f1\n")
         for i in range(len(result_dict["ID"])):
             f.write("{},{},{},{},{},{},{},{},{}, {}\n".format(
                 result_dict["ID"][i],
@@ -201,3 +192,174 @@ if __name__ == '__main__':
                 result_dict["optg_missings"][i],
                 result_dict["optg_f1"][i]
             ))
+
+def find_good_sample_opt(df):
+    gold_sample_ids = []
+    silver_sample_ids = []
+    other_sample_ids = []
+    # 遍历所有行
+    for i in range(len(df)):
+        current_optj_f1 = df.iloc[i, 3]
+        current_optp_con_prob_f1 = df.iloc[i, 6]
+        current_optg_f1 = df.iloc[i, 9]
+
+        if(current_optj_f1 > 0.9 and current_optp_con_prob_f1 > 0.9 and current_optg_f1 > 0.9):
+            gold_sample_ids.append(df.iloc[i, 0])
+        elif(current_optj_f1 > 0.8 and current_optp_con_prob_f1 > 0.8 and current_optg_f1 > 0.8):
+            silver_sample_ids.append(df.iloc[i, 0])
+        else:
+            other_sample_ids.append(df.iloc[i, 0])
+
+    print(f"gold_sample number: {len(gold_sample_ids)}, "
+          f"silver_sample number: {len(silver_sample_ids)}, "
+          f"other_sample number: {len(other_sample_ids)}")
+    return gold_sample_ids, silver_sample_ids, other_sample_ids
+
+
+def find_good_sample_l_measure(df, df_gs):
+    gold_sample_ids = []
+    silver_sample_ids = []
+    other_sample_ids = []
+    # 遍历所有行
+    for i in range(len(df)):
+        # Total Length
+        current_total_length = df['Total Length'][i]
+        current_gs_total_length = df_gs['Total Length'][df_gs['ID'] == df['ID'][i]].values[0]
+
+        # Number of Branches
+        current_num_branches = df['Number of Branches'][i]
+        current_gs_num_branches = df_gs['Number of Branches'][df_gs['ID'] == df['ID'][i]].values[0]
+
+        # Number of Tips
+        current_num_tips = df['Number of Tips'][i]
+        current_gs_num_tips = df_gs['Number of Tips'][df_gs['ID'] == df['ID'][i]].values[0]
+
+        if(current_total_length > 0.9 * current_gs_total_length and current_num_branches > 0.9 * current_gs_num_branches and current_num_tips > 0.9 * current_gs_num_tips):
+            gold_sample_ids.append(df.iloc[i, 0])
+        elif(current_total_length > 0.8 * current_gs_total_length and current_num_branches > 0.8 * current_gs_num_branches and current_num_tips > 0.8 * current_gs_num_tips):
+            silver_sample_ids.append(df.iloc[i, 0])
+        else:
+            other_sample_ids.append(df.iloc[i, 0])
+
+    print(f"gold_sample number: {len(gold_sample_ids)}, "
+          f"silver_sample number: {len(silver_sample_ids)}, "
+          f"other_sample number: {len(other_sample_ids)}")
+    return gold_sample_ids, silver_sample_ids, other_sample_ids
+
+import pandas as pd
+
+def find_good_sample_combined(df_opt, df_l_measure, df_gs, gold_threshold=0.8, silver_threshold=0.7):
+    gold_sample_ids = []
+    silver_sample_ids = []
+    other_sample_ids = []
+
+    # 合并 df_opt 和 df_l_measure，确保按 'ID' 对齐
+    df_combined = pd.merge(df_opt, df_l_measure, on='ID', how='inner')
+
+    # 遍历所有行
+    for i in range(len(df_combined)):
+        current_id = df_combined.iloc[i]['ID']
+
+        # 从 df_opt 中获取三个指标
+        current_optj_f1 = df_combined.iloc[i]['optj_f1']
+        current_optp_con_prob_f1 = df_combined.iloc[i]['optp_con_prob_f1']
+        current_optg_f1 = df_combined.iloc[i]['optg_f1']
+
+        # 从 df_l_measure 中获取三个指标
+        current_total_length = df_combined.iloc[i]['Total Length']
+        current_num_branches = df_combined.iloc[i]['Number of Branches']
+        current_num_tips = df_combined.iloc[i]['Number of Tips']
+
+        # 从 df_gs（黄金标准）中获取对应的指标
+        gs_row = df_gs[df_gs['ID'] == current_id]
+        if gs_row.empty:
+            print(f"警告：未找到 ID 为 {current_id} 的黄金标准数据。")
+            continue
+
+        current_gs_total_length = gs_row.iloc[0]['Total Length']
+        current_gs_num_branches = gs_row.iloc[0]['Number of Branches']
+        current_gs_num_tips = gs_row.iloc[0]['Number of Tips']
+
+        # 检查金样本条件（所有六个条件都 > 0.9）
+        conditions_gold = [
+            current_optj_f1 > gold_threshold,
+            current_optp_con_prob_f1 > gold_threshold,
+            current_optg_f1 > gold_threshold,
+            current_total_length > gold_threshold * current_gs_total_length,
+            current_num_branches > gold_threshold * current_gs_num_branches,
+            current_num_tips > gold_threshold * current_gs_num_tips
+        ]
+
+        # 检查银样本条件（所有六个条件都 > 0.8）
+        conditions_silver = [
+            current_optj_f1 > silver_threshold,
+            current_optp_con_prob_f1 > silver_threshold,
+            current_optg_f1 > silver_threshold,
+            current_total_length > silver_threshold * current_gs_total_length,
+            current_num_branches > silver_threshold * current_gs_num_branches,
+            current_num_tips > silver_threshold * current_gs_num_tips
+        ]
+
+        if all(conditions_gold):
+            gold_sample_ids.append(current_id)
+        elif all(conditions_silver):
+            silver_sample_ids.append(current_id)
+        else:
+            other_sample_ids.append(current_id)
+
+    print(f"金样本数量: {len(gold_sample_ids)}, "
+          f"银样本数量: {len(silver_sample_ids)}, "
+          f"其他样本数量: {len(other_sample_ids)}")
+
+    return gold_sample_ids, silver_sample_ids, other_sample_ids
+
+
+if __name__ == '__main__':
+    num_false_set = [1, 5, 10, 15, 20, 25, 30, 35, 40]
+
+    # gt_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_GS"
+    # out_dir = r"/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/pruned_unified_Auto"
+
+    gt_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab"
+
+    work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet"
+    loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
+    out_dirs = [os.path.join(work_dir, loss) + "/8_estimated_radius_swc" for loss in loss_list]
+    for out_dir in out_dirs:
+        print('processing:', out_dir)
+        # out_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc"
+        # img_dir = r"/data/kfchen/trace_ws/to_gu/img"
+        # save_path = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/result.txt"
+        csv_file = out_dir + "_opt_result.csv"
+
+        # my_opt(gt_dir, out_dir, csv_file)
+
+        # 重新处理id
+        # df = pd.read_csv(csv_file)
+        # new_id = []
+        # for i in range(len(df)):
+        #     new_id.append(str(int(df.iloc[i, 0].split('.')[0].split('_')[0])))
+        # df['ID'] = new_id
+        # df.to_csv(csv_file.replace('.csv', '_new.csv'), index=False)
+
+        csv_file = out_dir + "_opt_result_new.csv"
+        df_opt = pd.read_csv(csv_file)
+        # gold_sample_ids1, silver_sample_ids1, other_sample_ids1 = find_good_sample_opt(df)
+
+        l_measure_file = out_dir + "_l_measure.csv"
+        df_l = pd.read_csv(l_measure_file)
+        gs_l_measure_file = "/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab_l_measure.csv"
+        df_gs_l = pd.read_csv(gs_l_measure_file)
+        # gold_sample_ids2, silver_sample_ids2, other_sample_ids2 = find_good_sample_l_measure(df_l, df_gs_l)
+
+        find_good_sample_combined(df_opt, df_l, df_gs_l)
+
+
+
+
+
+
+
+
+
+

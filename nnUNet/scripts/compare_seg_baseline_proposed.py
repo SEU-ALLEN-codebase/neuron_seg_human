@@ -9,6 +9,16 @@ import cv2
 from matplotlib.patches import Rectangle
 from nnUNet.scripts.mip import get_mip_swc
 
+neuron_info_df = pd.read_csv("/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv", encoding='gbk')
+
+def find_resolution(filename):
+    # print(filename)
+    df = neuron_info_df
+    filename = int(filename.split('.')[0].split('_')[0])
+    for i in range(len(df)):
+        if int(df.iloc[i, 0]) == filename:
+            return df.iloc[i, 43]
+
 def find_swc(swc_dir, tif_file):
     file_name = tif_file[:-4]
     swc_files = os.listdir(swc_dir)
@@ -18,7 +28,8 @@ def find_swc(swc_dir, tif_file):
 
 
 def plot_compare_result(file_list, img_dir, seg_dirs, seg_labels, recon_dirs, recon_labels, info_file, index):
-    plt.figure(figsize=(5 * 5, 7 * 5))
+    row = 2
+    plt.figure(figsize=(5 * 11, row * 5))
 
     for idx, img_file in enumerate(file_list):
         img_path = os.path.join(img_dir, img_file)
@@ -34,6 +45,8 @@ def plot_compare_result(file_list, img_dir, seg_dirs, seg_labels, recon_dirs, re
 
         recon_paths = [find_swc(recon_dir, img_file) for recon_dir in recon_dirs]
         recon_mips = [get_mip_swc(recon_path, img, ignore_background=True) for recon_path in recon_paths]
+        xy_resolution = find_resolution(os.path.basename(recon_paths[0]))
+        recon_mips[1:] = [recon_mip[:int(recon_mip.shape[0] * xy_resolution / 1000), :int(recon_mip.shape[1] * xy_resolution / 1000)] for recon_mip in recon_mips[1:]]
 
         info_df = pd.read_csv(info_file, encoding='gbk')
         ID = int(img_file.split(".")[0])
@@ -52,13 +65,14 @@ def plot_compare_result(file_list, img_dir, seg_dirs, seg_labels, recon_dirs, re
                       recon_mip in recon_mips] # 添加边框
 
         labels = [label_info, seg_labels[0], recon_labels[0], seg_labels[1], recon_labels[1], seg_labels[2], recon_labels[2]]
-        plot_mips = [img_mip, seg_mips[0], recon_mips[0], seg_mips[1], recon_mips[1], seg_mips[2], recon_mips[2]]
+        plot_mips = [img_mip, seg_mips[0],  seg_mips[1], seg_mips[2], seg_mips[3], seg_mips[4],
+                     recon_mips[0], recon_mips[1], recon_mips[2], recon_mips[3], recon_mips[4]]
 
         for i, plot_mip in enumerate(plot_mips):
             # 横向
-            # ax = plt.subplot(6, 5, idx * 5 + i + 1)
+            ax = plt.subplot(row, 11, idx * 11 + i + 1)
             # 纵向
-            ax = plt.subplot(7, 5, i * 5 + idx + 1)
+            # ax = plt.subplot(7, 5, i * 5 + idx + 1)
             ax.imshow(plot_mip)
             ax.axis('off')
             if(i == 0):
@@ -67,7 +81,9 @@ def plot_compare_result(file_list, img_dir, seg_dirs, seg_labels, recon_dirs, re
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.01, hspace=0.01)
-    plt.savefig(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/compare_result/" + str(index) + ".png")
+    # plt.savefig(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/compare_result/" + str(index) + ".png")
+    # plt.show()
+    plt.savefig(r"/data/kfchen/trace_ws/paper_trace_result/nnunet/temp_mip/compare_result" + str(index) + ".png")
     plt.close()
 
 def plot_compare_result_0(file_list, img_dir, seg_dirs, seg_labels, info_file, index):
@@ -112,7 +128,8 @@ def plot_compare_result_0(file_list, img_dir, seg_dirs, seg_labels, info_file, i
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.01, hspace=0.01)
-    plt.savefig(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/compare_result/" + str(index) + ".png")
+    # plt.savefig(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/compare_result/" + str(index) + ".png")
+    plt.show()
     plt.close()
 
 
@@ -121,8 +138,10 @@ if __name__ == "__main__":
     info_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv"
     seg_dirs = [
         r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/label",
-        r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/source500",
-        r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/ptls10",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/0_seg",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/cldice/0_seg",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/skelrec/0_seg",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/0_seg",
     ]
     seg_labels = [
         "Label",
@@ -131,8 +150,10 @@ if __name__ == "__main__":
     ]
     recon_dirs = [
         r'/data/kfchen/trace_ws/to_gu/new_sort_lab/2_flip_after_sort',
-        r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/origin_recon/source500",
-        r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/origin_recon/ptls10",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/8_estimated_radius_swc",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/cldice/8_estimated_radius_swc",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/skelrec/8_estimated_radius_swc",
+        r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc",
     ]
     recon_labels = [
         "Manual Reconstruction",
@@ -143,13 +164,22 @@ if __name__ == "__main__":
     # tif
     img_files = os.listdir(seg_dirs[-1])
     img_files = [img_file for img_file in img_files if img_file.endswith(".tif")]
-    # img_files = random.sample(img_files, 5)
-    img_files = ["3515.tif", "3083.tif", "5364.tif", "2735.tif", "2497.tif"]
+    # img_files = random.sample(img_files, 2)
+    # img_files = ["2717.tif", "3083.tif", "5364.tif", "2735.tif", "2497.tif"]
     # plot_compare_result_0(img_files, img_dir, seg_dirs, seg_labels, info_file, "chosen")
-    plot_compare_result(img_files, img_dir, seg_dirs, seg_labels, recon_dirs, recon_labels, info_file, "chosen")
+    # plot_compare_result(img_files, img_dir, seg_dirs, seg_labels, recon_dirs, recon_labels, info_file, "chosen")
+    for img_file in img_files:
+        plot_compare_result([img_file], img_dir, seg_dirs, seg_labels, recon_dirs, recon_labels, info_file, img_file.split(".")[0])
 
     # for index in range(int(len(img_files)/5)):
     #     plot_compare_result(img_files[index*5:index*5+5], img_dir, seg_dirs, seg_labels, info_file, index)
 
+'''
+2882
+2894
+
+2861
+
+'''
 
 

@@ -632,8 +632,8 @@ def plot_box_graded(result_csv_a, result_csv_b, box_file, labels=["Baseline", "P
     df = pd.concat([df_a, df_b], axis=0)
     df_long = pd.melt(df, id_vars=['Type'], value_vars=metric_names, var_name='Feature', value_name='Value')
 
-    axes[0].set_ylim(-0.8, 80)
-    axes[1].set_ylim(0.15, 1.05)
+    viridis_palette = sns.color_palette("viridis", n_colors=5)[:4]
+
 
     # 绘图
     for idx, feature in enumerate(metric_names):
@@ -649,7 +649,7 @@ def plot_box_graded(result_csv_a, result_csv_b, box_file, labels=["Baseline", "P
         print(f"{feature}: mean1 {a_mean:.2f}, mean2 {b_mean:.2f}, {b_mean/a_mean:.2f}")
 
         sns.boxplot(x='Feature', y='Value', hue='Type', data=current_data, ax=ax,
-                    palette="viridis", linewidth=0.8, gap=.2, fliersize=3, flierprops={"marker": "+"},)
+                    palette=viridis_palette, linewidth=0.8, gap=.2, fliersize=3, flierprops={"marker": "+"},)
 
         type_a_values = current_data[current_data['Type'] == labels[0]]['Value'].values
         type_b_values = current_data[current_data['Type'] == labels[1]]['Value'].values
@@ -856,19 +856,19 @@ def plot_delta_histogram(result_csv_a, result_csv_b, hist_file, labels=["TypeA",
 
 
 def main_calc_metrics():
-    dataset_list = {
-        'hb_gt': '/data/kfchen/nnUNet/nnUNet_raw/Dataset169_hb_10k/labelsTr',
-        'hb_seg_baseline': '/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/validation',
-        'hb_seg_ptls': '/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/validation',
-
-        'HepaticVessel_gt': "/data/kfchen/nnUNet/nnUNet_raw/Dataset202_HepaticVessel01/labelsTr",
-        'HepaticVessel_seg_baseline': "/data/kfchen/nnUNet/nnUNet_results/Dataset202_HepaticVessel01/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/close_result/noptls500/validation",
-        'HepaticVessel_seg_ptls': "/data/kfchen/nnUNet/nnUNet_results/Dataset202_HepaticVessel01/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/close_result/ptls500/validation",
-
-        'cas_gt': "/home/kfchen/nnUNet_raw/Dataset301_CAS/labelsTr",
-        'cas_seg_baseline': "/home/kfchen/nnUNet_results/Dataset301_CAS/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source/validation",
-        'cas_seg_ptls': "/home/kfchen/nnUNet_results/Dataset301_CAS/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls/validation",
-    }
+    # dataset_list = {
+    #     'hb_gt': '/data/kfchen/nnUNet/nnUNet_raw/Dataset169_hb_10k/labelsTr',
+    #     'hb_seg_baseline': '/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/validation',
+    #     'hb_seg_ptls': '/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/validation',
+    #
+    #     'HepaticVessel_gt': "/data/kfchen/nnUNet/nnUNet_raw/Dataset202_HepaticVessel01/labelsTr",
+    #     'HepaticVessel_seg_baseline': "/data/kfchen/nnUNet/nnUNet_results/Dataset202_HepaticVessel01/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/close_result/noptls500/validation",
+    #     'HepaticVessel_seg_ptls': "/data/kfchen/nnUNet/nnUNet_results/Dataset202_HepaticVessel01/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/close_result/ptls500/validation",
+    #
+    #     'cas_gt': "/home/kfchen/nnUNet_raw/Dataset301_CAS/labelsTr",
+    #     'cas_seg_baseline': "/home/kfchen/nnUNet_results/Dataset301_CAS/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source/validation",
+    #     'cas_seg_ptls': "/home/kfchen/nnUNet_results/Dataset301_CAS/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls/validation",
+    # }
     # seg_folder = dataset_list['hb_seg_ptls']
     # gt_folder = dataset_list['hb_gt']
 
@@ -976,18 +976,83 @@ def calc_graded_metrics():
     #                                    "Broken Points Middle", "Skeleton Accuracy Middle",
     #                                    "Broken Points Outer", "Skeleton Accuracy Outer"])
 
-def ttest_test():
-    list_a = [1, 2, 3, 4, 5]
-    list_b = [2, 3, 4, 5, 6]
+def get_common_rows_from_dfs(dfs):
+    # 获取所有 DataFrame 第一列的共同项
+    # 假设 df 列名为 'col1'
+    common_items = set(dfs[0].iloc[:, 0])  # 假设所有 DataFrame 第一列都是一样的列名
+    for df in dfs[1:]:
+        common_items &= set(df.iloc[:, 0])  # 交集操作，找出共同的元素
 
-    list_a = list_a + list_a
-    list_b = list_b + list_b
+    # 将共有项作为索引过滤每个 DataFrame
+    common_df_list = []
+    for df in dfs:
+        filtered_df = df[df.iloc[:, 0].isin(common_items)]  # 根据第一列的共有项筛选
+        # 找到有多少行
+        # print(len(filtered_df))
+        # print(filtered_df)
+        common_df_list.append(filtered_df)
 
-    t_stat, p_value = ttest_ind(list_a, list_a)
-    print(p_value, t_stat)
+    # 返回包含共同项的所有 DataFrame
+    return common_df_list
+
+def plot_box_of_swc_list(seg_metrics_files, labels, box_file):
+    feature_names = ['Dice', 'Broken Points', 'Skeleton Accuracy']
+    # feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
+    #                      'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
+    #                      'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
+
+    num_features = len(feature_names)
+    cols = 3
+    rows = (num_features + cols - 1) // cols
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*3, 3 * rows))  # 调整figsize和dpi提高清晰度
+    axes = axes.flatten()
+    # plt.rcParams.update({'font.size': 20})  # 更新字体大小
+    # 设置字体 Arial
+    # plt.rcParams['font.family'] = 'Arial'
+
+    dfs = [pd.read_csv(f) for f in seg_metrics_files]
+    dfs = get_common_rows_from_dfs(dfs)
+    for i, df in enumerate(dfs):
+        df['Type'] = labels[i]
+
+    df = pd.concat(dfs, axis=0)
+    df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
+    viridis_palette = sns.color_palette("viridis", n_colors=5)[:4]
+
+    # 绘图
+    for idx, feature in enumerate(feature_names):
+        ax = axes[idx]
+        sns.boxplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], ax=ax,
+                    palette=viridis_palette, gap=.2, fliersize=0, native_scale=True)
+        # ax.set_title(feature_name_maps[feature], fontsize=15)
+        ax.set_title("")
+
+        ax.set_ylabel('')
+        ax.get_xaxis().set_visible(False)
+        # ax.get_xaxis().set_ticks([])
+        ax.tick_params(axis='both', which='major')  # 调整刻度标签大小
+        ax.legend().set_visible(False)
+        # ax.set_ylabel(feature_name_maps[feature])
+        ax.set_ylabel(feature)
+
+
+    # 隐藏不需要的子图
+    for ax in axes[num_features:]:
+        ax.axis('off')
+
+    plt.tight_layout(pad=1.0)  # 调整布局
+    plt.show()
+    plt.savefig(box_file)
+    plt.close()
 
 # main
 if __name__ == '__main__':
-    main_calc_metrics()
-    # calc_graded_metrics()
-    # ttest_test()
+    # main_calc_metrics()
+
+    root_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet"
+    loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
+    swc_dir_list = [os.path.join(root_dir, loss) for loss in loss_list]
+    plot_box_of_swc_list([swc_dir + "_seg_metrics.csv" for swc_dir in swc_dir_list],
+                         ['Baseline', 'clDice', 'SkelRec', 'Proposed', "Label"],
+                         "/data/kfchen/trace_ws/paper_trace_result/nnunet/seg_metrics_box.png")
+

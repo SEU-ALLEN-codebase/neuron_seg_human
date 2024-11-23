@@ -10,6 +10,16 @@ from matplotlib.patches import Rectangle
 from nnUNet.scripts.mip import get_mip_swc
 from pylib.file_io import load_image
 
+neuron_info_file =
+def find_resolution(filename):
+    # print(filename)
+    df = neuron_info_df
+    filename = int(filename.split('.')[0].split('_')[0])
+    for i in range(len(df)):
+        if int(df.iloc[i, 0]) == filename:
+            return df.iloc[i, 43]
+
+
 def find_v3draw_file(file_name, v3draw_dir="/PBshare/SEU-ALLEN/Projects/Human_Neurons/all_human_cells/all_human_cells_v3draw_8bit"):
     file_name = file_name.split(".")[0].split("_")[0]
     for root, dirs, files in os.walk(v3draw_dir):
@@ -61,9 +71,9 @@ def plot_compare_result(file_list, img_dir, seg_dirs, seg_labels, recon_dirs, re
 
         for i, plot_mip in enumerate(plot_mips):
             # 横向
-            # ax = plt.subplot(5, 5, idx * 5 + i + 1)
+            ax = plt.subplot(5, 5, idx * 5 + i + 1)
             # 纵向
-            ax = plt.subplot(5, 5, i * 5 + idx + 1)
+            # ax = plt.subplot(5, 5, i * 5 + idx + 1)
             ax.imshow(plot_mip)
             ax.axis('off')
             if(i == 0):
@@ -73,7 +83,8 @@ def plot_compare_result(file_list, img_dir, seg_dirs, seg_labels, recon_dirs, re
 
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.01, hspace=0.01)
-    plt.savefig(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/seg/" + str(index) + ".png")
+    # plt.savefig(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/seg/" + str(index) + ".png")
+    plt.show()
     plt.close()
 
 

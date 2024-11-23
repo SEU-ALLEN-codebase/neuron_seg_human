@@ -12,6 +12,15 @@ def process_file(swc_file, gt_swc_dir, swc_dir, result_swc_dir):
     id = str(int(swc_file.split("_")[0]))
     gt_swc_file = id + ".swc"
 
+    swc_path = os.path.join(swc_dir, swc_file)
+    out_path = os.path.join(result_swc_dir, gt_swc_file)
+
+    if(not os.path.exists(os.path.join(gt_swc_dir, gt_swc_file))):
+        return
+
+    if(os.path.exists(out_path)):
+        return
+
     x_center, y_center, z_center = 0, 0, 0
 
     with open(os.path.join(gt_swc_dir, gt_swc_file), "r") as f:
@@ -24,8 +33,7 @@ def process_file(swc_file, gt_swc_dir, swc_dir, result_swc_dir):
                 x_center, y_center, z_center = float(line[2]), float(line[3]), float(line[4])
                 break
 
-    swc_path = os.path.join(swc_dir, swc_file)
-    out_path = os.path.join(result_swc_dir, swc_file)
+
 
     sort_swc2(swc_path, out_path, (x_center, y_center, z_center))
 
@@ -59,8 +67,12 @@ if __name__ == '__main__':
     #                 f.write(" ".join(line) + "\n")
 
     gt_swc_dir = "/data/kfchen/trace_ws/to_gu/new_sort_lab/2_flip_after_sort"
-    swc_dir = "/data/kfchen/New Folder/to_Kaifeng/oneChecked_annotationn"
-    result_swc_dir = "/data/kfchen/New Folder/to_Kaifeng/final_oneChecked_annotation"
+    # swc_dir = "/data/kfchen/New Folder/to_Kaifeng/oneChecked_annotationn"
+    # result_swc_dir = "/data/kfchen/New Folder/to_Kaifeng/final_oneChecked_annotation"
+
+    swc_dir = r"/data/kfchen/trace_ws/paper_trace_result/manual/origin_anno_swc"
+    result_swc_dir = swc_dir + "_sorted"
+
     if(not os.path.exists(result_swc_dir)):
         os.makedirs(result_swc_dir)
 

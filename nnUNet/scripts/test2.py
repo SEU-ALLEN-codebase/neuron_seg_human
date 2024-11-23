@@ -29,7 +29,7 @@ import SimpleITK as sitk
 # from gcut.python.neuron_segmentation import NeuronSegmentation
 import sys
 
-from nnUNet.scripts.resolution_unifier import swc_file
+from nnUNet.scripts.resolution_unifier import swc_file, xy_resolution
 from simple_swc_tool.swc_io import read_swc, write_swc
 
 from scipy import ndimage
@@ -45,6 +45,7 @@ v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
 MAX_PROCESSES = 16
 
 import os
+import networkx as nx
 import inspect
 
 
@@ -120,10 +121,10 @@ class FileProcessingPipeline:
 def copy_file_from_seg_result(origin_seg_file, seg_dir, name_mapping_file):
     def get_full_name(file_name, df):
         full_name = df[df['nnunet_name'] == file_name]['full_name']
-        if (full_name.empty):
-            return None
-        else:
-            return str(full_name.values[0])
+        result = str(full_name.values[0])
+        if(not result.endswith('.tif')):
+            result += '.tif'
+        return result
     # print(origin_seg_file)
     if((not origin_seg_file.endswith('.tif')) and (not origin_seg_file.endswith('.nii.gz'))):
         return
@@ -189,12 +190,13 @@ class AutoTracePipeline(FileProcessingPipeline):
         self.add_step("6_reconnect_soma", self.connect_to_soma_file, ["5_swc", "2_soma_region"], ["6_connect_soma_swc"])
 
         self.add_step("7_rescale_xy_resolution", self.rescale_xy_resolution, ["6_connect_soma_swc"], ["7_scaled_1um_swc"])
+        self.add_step("8_estimated_radius_swc", self.get_estimated_radius, ["7_scaled_1um_swc", "0_seg"], ["8_estimated_radius_swc"])
 
     def find_resolution(self):
         # print(filename)
         filename = self.file_name
         df = self.neuron_info_df
-        filename = int(filename.split('.')[0])
+        filename = int(filename.split('.')[0].split('_')[0])
         for i in range(len(df)):
             if int(df.iloc[i, 0]) == filename:
                 return df.iloc[i, 43]
@@ -203,6 +205,7 @@ class AutoTracePipeline(FileProcessingPipeline):
         df = self.name_mapping_df
         # print(self.name_mapping_file)
         full_name = self.file_name.replace('.swc', '').replace('.tif', '').replace('image_', '')
+        full_name = int(full_name.split('_')[0])
         # print(full_name)
         img_size = df[df['ID'] == int(full_name)]['img_size'].values[0]
         img_size = img_size.split(',')
@@ -278,6 +281,9 @@ class AutoTracePipeline(FileProcessingPipeline):
         df = self.name_mapping_df
         somaregionfinder = SmartSomaRegionFinder()
         soma_region = somaregionfinder.test_soma_detectison([seg_file, df, soma_region_file])
+        if(soma_region is None):
+            clear_gsdt_file(seg_file)
+            return
 
         centroid = compute_centroid(soma_region)
         soma_x, soma_y, soma_z, soma_r = centroid[2], centroid[1], centroid[0], 1
@@ -383,18 +389,26 @@ class AutoTracePipeline(FileProcessingPipeline):
         gsdt = 1
         b_RadiusFrom2D = 1
 
-        if (not os.path.exists(somamarker_file)):
-            somamarker_path = "NULL"
+        # temp_img_file = os.path.join(os.path.dirname(swc_file), str(os.path.basename(swc_file).split('_')[0]) + "_temp.tif")
+        # temp_swc_file = os.path.join(os.path.dirname(swc_file), str(os.path.basename(swc_file).split('_')[0]) + "_temp.swc")
+        # temp_marker_file = os.path.join(os.path.dirname(swc_file), str(os.path.basename(swc_file).split('_')[0]) + "_temp.marker")
+        # shutil.copyfile(img_file, temp_img_file)
 
         try:
             if (sys.platform == "linux"):
-                cmd = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x vn2 -f app2 -i {img_file} -o {swc_file} -p {somamarker_file} 0 10 1 {b_RadiusFrom2D} {gsdt} 1 {resample} 0 0'
+                cmd = f'xvfb-run -a -s "-screen 0 640x480x16" "{v3d_path}" -x vn2 -f app2 -i "{img_file}" -o "{swc_file}" -p "{somamarker_file}" 0 10 1 {b_RadiusFrom2D} {gsdt} 1 {resample} 0 0'
                 cmd = process_path(cmd)
                 subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True)
             else:
                 pass
         except:
             pass
+
+        # os.remove(temp_img_file)
+        # os.remove(temp_marker_file)
+        # # rename
+        # if(os.path.exists(temp_swc_file)):
+        #     os.rename(temp_swc_file, swc_file)
 
         if (os.path.exists(ini_swc_path)):
             os.remove(ini_swc_path)
@@ -555,6 +569,168 @@ class AutoTracePipeline(FileProcessingPipeline):
                     result_lines.append(" ".join(line) + "\n")
             f.writelines(result_lines)
 
+    def get_estimated_radius(self, input_files, output_files):
+        def v3d_get_radius(img_path, swc_path, out_path):
+            # temp_img_path = os.path.join(os.path.dirname(out_path), os.path.basename(out_path).split('_')[0] + '_temp.tif')
+            # temp_swc_path = os.path.join(os.path.dirname(out_path), os.path.basename(out_path).split('_')[0] + '_temp.swc')
+            radius2d = 1
+            cmd_str = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x neuron_radius -f neuron_radius -i {img_path} {swc_path} -o {out_path} -p 10 {radius2d}'
+            cmd_str = cmd_str.replace('(', '\(').replace(')', '\)')
+            # print(cmd_str)
+            subprocess.run(cmd_str, stdout=subprocess.DEVNULL, shell=True)
+
+        def load_swc_to_undirected_graph(swc_file_path):
+            """从SWC文件加载数据，构建无向图，并记录每个节点的parent信息"""
+            df = pd.read_csv(swc_file_path, delim_whitespace=True, comment='#', header=None,
+                             names=['id', 'type', 'x', 'y', 'z', 'radius', 'parent'])
+            G = nx.Graph()
+
+            for _, row in df.iterrows():
+                # 添加节点，同时记录parent信息
+                G.add_node(row['id'], pos=(row['x'], row['y'], row['z']), radius=row['radius'], type=row['type'],
+                           parent=row['parent'])
+                if row['parent'] != -1:
+                    G.add_edge(row['parent'], row['id'])
+
+            return G
+
+        def find_nearest_node(G, target_pos):
+            """ 在图中找到与给定坐标最近的节点 """
+            nearest_node = None
+            min_distance = float('inf')
+
+            for node in G.nodes(data=True):
+                pos = node[1]['pos']
+                distance = np.linalg.norm(np.array(pos) - np.array(target_pos))
+                if distance < min_distance:
+                    nearest_node = node[0]
+                    min_distance = distance
+
+            return nearest_node
+
+        def export_to_swc_dfs(G, root_pos, output_filename):
+            if(os.path.exists(output_filename)):
+                os.remove(output_filename)
+
+            start_node = find_nearest_node(G, root_pos)
+
+            # 调整根节点
+            potential_root = max(G.nodes, key=lambda x: G.degree(x))
+            potential_root_degree = G.degree(potential_root)
+            potential_root_list = [node for node in G.nodes if G.degree(node) == potential_root_degree]
+            for node in potential_root_list:
+                if G.degree(node) > 4 and len(potential_root_list) == 1:  # 这个点的度数大于4
+                    start_node = node
+                elif (nx.shortest_path_length(G, start_node, node) < 3):
+                    start_node = node
+                elif (np.linalg.norm(np.array(G.nodes[node]['pos']) - np.array(root_pos)) < 10):
+                    start_node = node
+
+            # 打开文件进行写入
+            with open(output_filename, 'w') as f:
+                # 写入SWC文件的头部注释
+                f.write("# SWC file generated from DFS traversal\n")
+                f.write("# Columns: id type x y z radius parent\n")
+
+                # 用于存储节点的新编号和访问状态
+                new_id = 1
+                visited = set()
+                stack = [(start_node, -1)]  # (current_node, parent_id_in_new_swc)
+
+                while stack:
+                    node, parent_id = stack.pop()
+                    if node not in visited:
+                        visited.add(node)
+                        node_data = G.nodes[node]
+                        pos = node_data['pos']
+                        radius = node_data['radius']
+                        if (parent_id == -1):
+                            node_type = 1
+                        else:
+                            node_type = 3
+
+                        # 写入当前节点数据
+                        f.write(f"{new_id} {node_type} {pos[0]} {pos[1]} {pos[2]} {radius} {parent_id}\n")
+
+                        # 更新父节点ID为当前节点的新ID
+                        current_parent_id = new_id
+                        new_id += 1
+
+                        # 将所有未访问的邻接节点添加到栈中
+                        for neighbor in G.neighbors(node):
+                            if neighbor not in visited:
+                                stack.append((neighbor, current_parent_id))
+
+        def calc_node_dist(G, node1, node2):
+            pos1 = np.array(G.nodes[node1]['pos'])
+            pos2 = np.array(G.nodes[node2]['pos'])
+            return np.linalg.norm(pos1 - pos2)
+
+        def gaussian_smoothing_radius_tree(G, sigma=1.0):
+            smoothed_values = {}
+            soma_r = G.nodes[1]['radius']
+            for node in G.nodes:
+                neighbors = list(G.neighbors(node))
+                weights = []
+                values = []
+                for neighbor in neighbors:
+                    distance = calc_node_dist(G, node, neighbor)
+                    weight = np.exp(- (distance ** 2) / (2 * sigma ** 2))
+                    weights.append(weight)
+                    values.append(G.nodes[neighbor]['radius'])
+                # 自身的权重
+                self_weight = np.exp(0)
+                total_weight = self_weight + sum(weights)
+                weighted_sum = G.nodes[node]['radius'] * self_weight + sum(w * v for w, v in zip(weights, values))
+                smoothed_values[node] = weighted_sum / total_weight
+            nx.set_node_attributes(G, smoothed_values, 'radius')
+            G.nodes[1]['radius'] = soma_r
+            return G
+
+        def smoothing_swc_file(swc_file_path, output_filename):
+            G = load_swc_to_undirected_graph(swc_file_path)
+            G = gaussian_smoothing_radius_tree(G)
+            root_pos = G.nodes[1]['pos']
+            # print(root_pos)
+            export_to_swc_dfs(G, root_pos, output_filename)
+
+
+        if(not input_files):
+            return
+
+        swc_file = input_files[0]
+        seg_file = input_files[1]
+        radius_swc_file = output_files[0]
+
+        if(not os.path.exists(swc_file) or not os.path.exists(seg_file) or os.path.exists(radius_swc_file)):
+            return
+
+        seg = tifffile.imread(seg_file).astype("uint8")
+        seg = np.flip(seg, axis=1)
+        origin_shape = self.get_origin_img_size()
+        xy_resolution = self.find_resolution()
+        img_shape = [int(origin_shape[0]), int(origin_shape[1] * xy_resolution / 1000),
+                     int(origin_shape[2] * xy_resolution / 1000)]
+        seg = skimage.transform.resize(seg, img_shape, order=0, anti_aliasing=False)
+        # print(img_shape)
+        temp_img_file = radius_swc_file.replace('.swc', '_temp.tif')
+        tifffile.imwrite(temp_img_file, seg)
+
+        v3d_get_radius(temp_img_file, swc_file, radius_swc_file)
+        try:
+            smoothing_swc_file(radius_swc_file, radius_swc_file)
+        except:
+            print(f"Error: {radius_swc_file}")
+            '''
+            '/data/kfchen/trace_ws/paper_trace_result/nnunet/proposed_9k/8_estimated_radius_swc/02796_P025_T01_-S028_LTL_R0613_RJ-20230201_YW.swc'
+            '''
+            if(os.path.exists(radius_swc_file)):
+                os.remove(radius_swc_file)
+        os.remove(temp_img_file)
+
+
+
+
 def process_pipeline(file_name):
     pipeline = AutoTracePipeline(work_dir, file_name, [name_mapping_file, neuron_info_file])
     pipeline.run()  # 如果需要执行任务，可以取消注释这行
@@ -562,8 +738,9 @@ def process_pipeline(file_name):
 
 if __name__ == "__main__":
     net_work_list = ["nnunet"]
-    loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
+    loss_list = ['proposed_9k', 'baseline', 'cldice', 'skelrec', 'newcel_0.1']
     work_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/" for loss in loss_list]
+    # work_dir_list = work_dir_list[:1]
 
     for work_dir in work_dir_list:
         print(f"Processing {work_dir}")
@@ -571,9 +748,13 @@ if __name__ == "__main__":
         origin_seg_dir = os.path.join(work_dir, "origin_seg")# "origin_seg"
 
 
-        raw_dataset_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma"
-        seg_dir = os.path.join(work_dir, "0_seg")
+        if("9k" in work_dir):
+            raw_dataset_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset170_14k_hb_neuron"
+        else:
+            raw_dataset_dir = r"/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma"
         name_mapping_file = os.path.join(raw_dataset_dir, "name_mapping.csv")
+
+        seg_dir = os.path.join(work_dir, "0_seg")
         neuron_info_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset169_hb_10k/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/ptls10/norm_result/Human_SingleCell_TrackingTable_20240712.csv"
 
         if(not os.path.exists(seg_dir)):
@@ -582,11 +763,18 @@ if __name__ == "__main__":
         print("Data preparation is done.")
         # pipeline_list = []
         file_names = [f for f in os.listdir(seg_dir) if f.endswith('.tif')]
+
+        # done_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/proposed_9k/8_estimated_radius_swc"
+        # done_files = [f.replace('.swc', '.tif') for f in os.listdir(done_dir) if f.endswith('.swc')]
+        # file_names = [f for f in file_names if f not in done_files]
+        # print(f"Total {len(file_names)} files to process.")
+        # exit()
+
         # file_names = file_names[:10]
         # for file_name in file_names:
         #     pipeline = AutoTracePipeline(work_dir, file_name, [name_mapping_file, neuron_info_file])
-        #     pipeline_list.append(pipeline)
-        #     # pipeline.run()
+        #     # pipeline_list.append(pipeline)
+        #     pipeline.run()
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # 使用tqdm添加进度条

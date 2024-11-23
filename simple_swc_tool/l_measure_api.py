@@ -26,7 +26,7 @@ def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\va
     output, err = p.communicate()
     output_copy = output
     output = output.decode().splitlines()[35:-2]
-    id = os.path.split(swc_file)[-1].split('_')[0]
+    id = os.path.split(swc_file)[-1].split('_')[0].split('.')[0]
 
     info_dict = {}
     for s in output:
@@ -146,19 +146,39 @@ def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\va
 #     plt.savefig(violin_png)
 #     plt.close()
 
-def plot_violin(df_a, df_b, violin_file, labels=['GS', 'Auto']):
-    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
+def plot_violin(df_a, df_b, violin_file=None, labels=['GS', 'Auto']):
+    # feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
+    ids1 = df_a['ID'].tolist()
+    ids2 = df_b['ID'].tolist()
+
+    common_ids = list(set(ids1) & set(ids2))
+    df_a = df_a[df_a['ID'].isin(common_ids)]
+    df_b = df_b[df_b['ID'].isin(common_ids)]
+
+
+    feature_names = ['Number of Bifurcatons', 'Number of Branches', 'Number of Tips',
+                           'Overall Width', 'Overall Height', 'Overall Depth', 'Total Length',
+                           'Max Euclidean Distance', 'Max Path Distance', 'Max Branch Order',
+                           'Average Bifurcation Angle Remote']
     feature_name_maps = {
         'Number of Branches': 'Number of Branches',
         'Total Length': 'Total Length (μm)',
-        'Max Path Distance': 'Max Path Distance (μm)',
+        'Max Path Distance': 'Max Path Dist. (μm)',
         'N_stem': 'Number of Stems',
         'Number of Tips': 'Number of Tips',
-        'Max Branch Order': 'Max Branch Order'
+        'Max Branch Order': 'Max Branch Order',
+        'N_node': 'Number of Nodes',
+        'Number of Bifurcatons': 'Number of Bifurcations',
+        'Overall Width': 'OveWidth (μm)',
+        'Overall Height': 'Height (μm)',
+        'Overall Depth': 'Depth (μm)',
+        'Max Euclidean Distance': 'Max Euclidean Dist. (μm)',
+        # 'Max Branch Order': 'Max Branch Order',
+        'Average Bifurcation Angle Remote': 'Avg. Remote BA (°)'
     }
 
     num_features = len(feature_names)
-    cols = 5
+    cols = 6
     rows = (num_features + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, 4 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
     axes = axes.flatten()
@@ -172,16 +192,14 @@ def plot_violin(df_a, df_b, violin_file, labels=['GS', 'Auto']):
     # 绘图
     for idx, feature in enumerate(feature_names):
         ax = axes[idx]
-        if feature == 'Number of Branches':
-            ax.set_ylim(-1.5, 150)
-        elif feature == 'Total Length':
-            ax.set_ylim(-50, 5000)
 
         sns.violinplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature],
                        ax=ax, palette="viridis", split=False, inner="quartile", linewidth=0.8)
 
         # ax.set_title(feature_name_maps[feature], fontsize=15)
         ax.set_xlabel('')
+        # 关闭x轴标签
+        ax.set_xticklabels([])
         ax.set_ylabel(feature_name_maps[feature], fontsize=20)
         ax.tick_params(axis='both', which='major', labelsize=15)  # 调整刻度标签大小
         ax.legend().set_visible(False)
@@ -191,6 +209,7 @@ def plot_violin(df_a, df_b, violin_file, labels=['GS', 'Auto']):
         ax.axis('off')
 
     plt.tight_layout()  # 调整布局
+    # plt.show()
     plt.savefig(violin_file)
     plt.close()
 
@@ -286,6 +305,9 @@ def plot_box_of_swc_list(l_measure_files, labels, box_file):
         df['Type'] = labels[i]
 
     df = pd.concat(dfs, axis=0)
+    average_values = df.groupby('Type')[feature_names].mean()
+    print("各类各特征的平均值：")
+    print(average_values)
     df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
 
     # 绘图
@@ -610,17 +632,21 @@ if __name__ == '__main__':
     v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
     net_work_list = ["nnunet"]
     loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
-    swc_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/7_scaled_1um_swc" for loss in loss_list]
+    swc_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/8_estimated_radius_swc" for loss in loss_list]
     swc_dir_list.append("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab")
+    # swc_dir_list = ['/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc']
 
-    for swc_dir in swc_dir_list:
-        result_csv = swc_dir + "_l_measure.csv"
-        if(not os.path.exists(result_csv)):
-            l_measure_swc_dir(swc_dir, result_csv, v3d_path)
+    # for swc_dir in swc_dir_list:
+    #     result_csv = swc_dir + "_l_measure.csv"
+    #     if(not os.path.exists(result_csv)):
+    #         l_measure_swc_dir(swc_dir, result_csv, v3d_path)
+    #
+    # plot_box_of_swc_list([swc_dir + "_l_measure.csv" for swc_dir in swc_dir_list],
+    #                      ['Baseline', 'clDice', 'SkelRec', 'Proposed', "Label"],
+    #                      "/data/kfchen/trace_ws/paper_trace_result/nnunet/box.png")
 
-    plot_box_of_swc_list([swc_dir + "_l_measure.csv" for swc_dir in swc_dir_list],
-                         ['Baseline', 'clDice', 'SkelRec', 'Proposed', "Label"],
-                         "/data/kfchen/trace_ws/paper_trace_result/nnunet/box.png")
+
+
 
 
     # swc_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/7_scaled_1um_swc"
@@ -632,8 +658,13 @@ if __name__ == '__main__':
     # # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
     #
     # plot_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/hist.png"
-    # df_a = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/gt_swc.csv")
-    # df_b = pd.read_csv(r"/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/pred_swc.csv")
-    # plot_violin(df_a, df_b, plot_file, labels=['Baseline', 'Gamma'])
+
+
+    df_a = pd.read_csv(r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab_l_measure.csv")
+    df_b = pd.read_csv(r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc_l_measure.csv")
+    violin_file = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/violin.png"
+    plot_violin(df_a, df_b, violin_file, labels=['Manual', 'Auto'])
+
+
     # plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
     # plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])

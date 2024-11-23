@@ -191,9 +191,10 @@ class SmartSomaRegionFinder():
         # filename = filename.split('.')[0]
         for i in range(len(df)):
             # print(df.iloc[i, 1], filename)
-            if df.iloc[i, 1] == filename:
+            if df.iloc[i, 1] == filename or df.iloc[i, 1] == filename.replace('.tif', ''):
                 return df.iloc[i, 3]
-        return None
+        print(filename)
+        exit()
 
     def exponential_decay(self, x, a, b, c):
         return a * np.exp(-b * (x - 2)) + c
@@ -328,11 +329,28 @@ class SmartSomaRegionFinder():
         high_freq_ratios, high_freq_averages = self.calc_high_freq_gpu(seg, kernel_radii)
 
         kernel_radii = kernel_radii[:len(high_freq_ratios)]
+        if(len(kernel_radii) == 2):
+            # kernel_radii = kernel_radii + [(kernel_radii[1] + kernel_radii[0]) / 2]
+            kernel_radii = np.append(kernel_radii, (kernel_radii[1] + kernel_radii[0]) / 2)
+            print(kernel_radii)
+            high_freq_ratios, high_freq_averages = self.calc_high_freq_gpu(seg, kernel_radii)
+            print(high_freq_averages, high_freq_ratios)
+        elif(len(kernel_radii) == 1):
+            # kernel_radii = kernel_radii + [kernel_radii[0] + 0.2, kernel_radii[0] - 0.2]
+            kernel_radii = np.append(kernel_radii, kernel_radii[0] + 0.1)
+            kernel_radii = np.append(kernel_radii, kernel_radii[0] + 0.2)
+            print(kernel_radii)
+            high_freq_ratios, high_freq_averages = self.calc_high_freq_gpu(seg, kernel_radii)
+            print(high_freq_averages, high_freq_ratios)
+        elif(len(kernel_radii) == 0):
+            return None
         high_freq_averages = np.array(high_freq_averages)
         high_freq_averages = (high_freq_averages - high_freq_averages.min()) / (
                     high_freq_averages.max() - high_freq_averages.min())
-
-        popt, pcov = curve_fit(self.exponential_decay, kernel_radii, high_freq_averages, p0=[1, 1, 0], maxfev=10000)
+        try:
+            popt, pcov = curve_fit(self.exponential_decay, kernel_radii, high_freq_averages, p0=[1, 1, 0], maxfev=10000)
+        except:
+            return None
 
         # 生成拟合曲线数据
         x_fit = np.linspace(kernel_radii.min(), kernel_radii.max(), 100)
