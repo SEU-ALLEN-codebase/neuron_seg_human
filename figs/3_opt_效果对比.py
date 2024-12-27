@@ -334,9 +334,9 @@ def plot_box_of_swc_list(opt_result_files, labels, box_file):
         # 返回包含共同项的所有 DataFrame
         return common_df_list
     feature_names = ['optj_f1', 'optp_con_prob_f1', 'optg_f1']
-    feature_name_maps = {'optj_f1': 'OPT-J F1',
-                         'optp_con_prob_f1': 'OPT-P F1',
-                         'optg_f1': 'OPT-G F1', }
+    feature_name_maps = {'optj_f1': 'OPT-J F1 ↑',
+                         'optp_con_prob_f1': 'OPT-P F1 ↑',
+                         'optg_f1': 'OPT-G F1 ↑', }
 
     num_features = len(feature_names)
     cols = 3
@@ -357,7 +357,9 @@ def plot_box_of_swc_list(opt_result_files, labels, box_file):
     print("各类各特征的平均值：")
     print(average_values)
     df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
-    viridis_palette = sns.color_palette("viridis", n_colors=5)[:4]
+
+    colors = plt.get_cmap('Set3').colors
+    colors = [colors[8], colors[2], colors[5], colors[3], colors[0]]
 
     # 绘图
     for idx, feature in enumerate(feature_names):
@@ -366,24 +368,42 @@ def plot_box_of_swc_list(opt_result_files, labels, box_file):
             ax.set_ylim(-1.5, 150)
         elif feature == 'Total Length':
             ax.set_ylim(-50, 5000)
-        sns.boxplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], ax=ax,
-                    palette=viridis_palette, gap=.2, fliersize=0, native_scale=True)
-        # ax.set_title(feature_name_maps[feature], fontsize=15)
+
+        feature_data = df_long[df_long['Feature'] == feature]
+
+        # 计算positions, 每个Feature会有多个箱体
+        # positions的数量要等于每个Feature和Type的组合数量
+        positions = [0, 0.9, 1.5, 2.1]
+        hue_order = feature_data['Type'].unique()  # 获取所有的hue分类，通常是['Type 1', 'Type 2']
+
+        print(positions)
+
+        # # 绘制箱线图
+        # sns.boxplot(x='Feature', y='Value', hue='Type', data=feature_data, ax=ax,
+        #             palette=colors, dodge=False, fliersize=0, native_scale=True, positions=positions)
+        current_data = []
+        for i, hue in enumerate(hue_order):
+            current_data.append(feature_data[feature_data['Type'] == hue]['Value'].to_numpy())
+            ax.boxplot(current_data[i], positions=[positions[i]], widths=0.5, patch_artist=True,
+                       showfliers=True, boxprops=dict(facecolor=colors[i], color='black'),
+                       medianprops=dict(color='black'), flierprops=dict(marker='o', color='black', markersize=3))
+
         ax.set_title("")
 
-        ax.set_ylabel('')
         ax.get_xaxis().set_visible(False)
         # ax.get_xaxis().set_ticks([])
-        ax.tick_params(axis='both', which='major')  # 调整刻度标签大小
         ax.legend().set_visible(False)
-        ax.set_ylabel(feature_name_maps[feature])
+        # 设置y轴标签位置
+        ax.set_ylabel(feature_name_maps[feature], fontsize=15)
+        ax.tick_params(axis='both', which='major', labelsize=15)
 
 
     # 隐藏不需要的子图
     for ax in axes[num_features:]:
         ax.axis('off')
 
-    plt.tight_layout(pad=1.0)  # 调整布局
+
+    plt.tight_layout(pad=1.5)  # 调整布局
     # plt.show()
     plt.savefig(box_file)
     plt.close()

@@ -23,7 +23,7 @@ def trace_init(method, img_file, somamarker_file, out_swc_file):
 
     return out_swc_file, somamarker_file
 
-def APP1_trace_file(img_file, somamarker_file=None, out_swc_file=None, v3d_path=None):
+def APP1_trace_file(img_file, out_swc_file=None, v3d_path=None, somamarker_file=None):
     """
     **** Usage of APP1 ****
     vaa3d -x plugin_name -f app1 -i <inimg_file> -p [<inmarker_file> [<channel> [<bkg_thresh> [<b_256cube> ]]]]
@@ -47,9 +47,14 @@ def APP1_trace_file(img_file, somamarker_file=None, out_swc_file=None, v3d_path=
         cmd = f'{v3d_path} /x D:/tracing_ws/vn2.dll /f app1 /i {img_file} /o {out_swc_file} /p {somamarker_file} 0 10 1'
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
-    print(f"APP1 tracing done: {out_swc_file}")
+    if(os.path.exists(out_swc_file)):
+        # print(f"APP1 tracing done: {out_swc_file}")
+        pass
+    else:
+        print(f"APP1 tracing failed: {out_swc_file}")
+        print(cmd)
 
-def APP2_trace_file(img_file, somamarker_file=None, out_swc_file=None, v3d_path=None, resample=1, gsdt=1, b_RadiusFrom2D=1):
+def APP2_trace_file(img_file, out_swc_file=None, v3d_path=None, somamarker_file=None, resample=1, gsdt=1, b_RadiusFrom2D=1):
     '''
         **** Usage of APP2 ****
         vaa3d -x plugin_name -f app2 -i <inimg_file> -o <outswc_file> -p [<inmarker_file> [<channel> [<bkg_thresh>
@@ -74,7 +79,7 @@ def APP2_trace_file(img_file, somamarker_file=None, out_swc_file=None, v3d_path=
     if (os.path.exists(out_swc_file)): return
 
     if (sys.platform == "linux"):
-        cmd = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x vn2 -f app2 -i {img_file} -o {out_swc_file} -p {somamarker_file} 0 10 1 {b_RadiusFrom2D} {gsdt} 1 5 {resample} 0 0'
+        cmd = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x vn2 -f app2 -i {img_file} -o {out_swc_file} -p {somamarker_file} 0 10 1 {b_RadiusFrom2D} {gsdt} 1 {resample} 0 0'
         cmd = process_path(cmd)
         subprocess.run(cmd, stdout=subprocess.DEVNULL, shell=True)
     else:
@@ -115,9 +120,12 @@ def Advantra_trace_file(img_file, out_swc_file=None, v3d_path=None):
 
     # rename file
     result_file = img_file + "_Advantra.swc"
-    os.rename(result_file, out_swc_file)
 
-    print(f"Advantra tracing done: {out_swc_file}")
+    if(os.path.exists(result_file)):
+        os.rename(result_file, out_swc_file)
+        # print(f"Advantra tracing done: {out_swc_file}")
+    else:
+        print(f"Advantra tracing failed: {out_swc_file}")
 
 def Meanshift_trace_file(img_file):
     '''
@@ -223,9 +231,11 @@ def CWlab_method_v1(img_file, out_swc_file=None, v3d_path=None):
     else:
         pass
 
-    os.rename(result_name, out_swc_file)
-
-    print(f"CWlab_method1_version1 tracing done (early stop): {out_swc_file}")
+    if(os.path.exists(result_name)):
+        os.rename(result_name, out_swc_file)
+        # print(f"CWlab_method1_version1 tracing done (early stop): {out_swc_file}")
+    else:
+        print(f"CWlab_method1_version1 tracing failed: {out_swc_file}")
 
 def MOST_trace_file(img_file, out_swc_file=None, v3d_path=None):
     '''
@@ -249,8 +259,11 @@ def MOST_trace_file(img_file, out_swc_file=None, v3d_path=None):
     else:
         pass
 
-    os.rename(result_name, out_swc_file)
-    print(f"MOST tracing done: {out_swc_file}")
+    if(os.path.exists(result_name)):
+        os.rename(result_name, out_swc_file)
+        # print(f"MOST tracing done: {out_swc_file}")
+    else:
+        print(f"MOST tracing failed: {out_swc_file}")
 
 def TReMap_trace_file(img_file, somamarker_file=None, out_swc_file=None, v3d_path=None):
     '''
@@ -309,9 +322,55 @@ def Mst_tracing_file(img_file, out_swc_file=None, v3d_path=None):
     else:
         pass
 
-    os.rename(result_name, out_swc_file)
-    print(f"MST tracing done: {out_swc_file}")
+    if(os.path.exists(result_name)):
+        os.rename(result_name, out_swc_file)
+        # print(f"MST tracing done: {out_swc_file}")
+    else:
+        print(f"MST tracing failed: {out_swc_file}")
 
+def NeuroGPSTree_trace_file(img_file, out_swc_file=None, v3d_path=None):
+    # f'{self.vaa3d_path} -x NeuroGPSTree -f tracing_func -i {infile} -p 1 1 1 10
+    out_swc_file, _ = trace_init("NeuroGPSTree", img_file, out_swc_file=out_swc_file, somamarker_file=None)
+    if (os.path.exists(out_swc_file)): return
+    result_name = img_file + "_NeuroGPSTree.swc"
+
+    cmd = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x NeuroGPSTree -f tracing_func -i {img_file} -p 1 1 1 10'
+
+    env = os.environ.copy()
+    ld_library_path = v3d_path[:-6]  # '/home/kfchen/Vaa3D_CentOS_64bit_v3.601/bin'
+    env['LD_LIBRARY_PATH'] = f"{ld_library_path}:{env.get('LD_LIBRARY_PATH', '')}"
+    # os.system(f"{cmd} env {env}")
+    result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+
+    if(os.path.exists(result_name)):
+        os.rename(result_name, out_swc_file)
+        # print(f"NeuroGPSTree tracing done: {out_swc_file}")
+    else:
+        print(f"NeuroGPSTree tracing failed: {out_swc_file}")
+        # print(cmd)
+        pass
+
+def neuTube_trace_file(img_file, out_swc_file=None, v3d_path=None):
+    # f'{self.vaa3d_path} -x NeuroGPSTree -f tracing_func -i {infile} -p 1 1 1 10
+    out_swc_file, _ = trace_init("neuTube", img_file, out_swc_file=out_swc_file, somamarker_file=None)
+    if (os.path.exists(out_swc_file)): return
+    result_name = img_file + "_neutube.swc"
+
+    cmd = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x neuTube -f neutube_trace -i {img_file} -p 1 1'
+
+    env = os.environ.copy()
+    ld_library_path = v3d_path[:-6]  # '/home/kfchen/Vaa3D_CentOS_64bit_v3.601/bin'
+    env['LD_LIBRARY_PATH'] = f"{ld_library_path}:{env.get('LD_LIBRARY_PATH', '')}"
+    # os.system(f"{cmd} env {env}")
+    result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+
+    if(os.path.exists(result_name)):
+        os.rename(result_name, out_swc_file)
+        # print(f"NeuroGPSTree tracing done: {out_swc_file}")
+    else:
+        print(f"NeuroGPSTree tracing failed: {out_swc_file}")
+        # print(cmd)
+        pass
 
 if __name__ == "__main__":
     img_file = "/data/kfchen/trace_ws/trace_consensus_test/2369.tif"

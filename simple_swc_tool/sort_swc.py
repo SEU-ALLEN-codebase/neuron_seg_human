@@ -231,13 +231,14 @@ def connect_components(G):
     return new_G
 
 
-def sort_swc(swc_file, sorted_swc_file, root_pos=(0,0,0)):
+def sort_swc(swc_file, sorted_swc_file, root_pos=(0,0,0), merge_nodes=True):
     G = load_swc_to_undirected_graph(swc_file)
 
-    # 临近点聚类
-    labels = apply_clustering(G)
-    G = merge_clusters(G, labels)
-    # visualize_graph(new_G)
+    if(merge_nodes):
+        # 临近点聚类
+        labels = apply_clustering(G)
+        G = merge_clusters(G, labels)
+        # visualize_graph(new_G)
 
 
     if(not check_connectivity(G) or not is_tree(G)):

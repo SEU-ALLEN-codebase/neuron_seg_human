@@ -16,7 +16,6 @@ import numpy as np
 import timeout_decorator
 
 from multiprocessing.pool import Pool
-from tqdm import tqdm
 
 
 class BaseTracer(object):
@@ -34,9 +33,10 @@ class BaseTracer(object):
 
     # @timeout_decorator.timeout(DEFAULT_TIMEOUT)
     def run(self, cmd_str):
-        try: 
+        try:
+            out = subprocess.check_output(cmd_str, timeout=self.timeout, shell=True)
         except subprocess.TimeoutExpired:
-            print(f'Time expired error for cmd: {cmd_str}')
+            print(f'Time expired error for cmd: cmd_str')
             out = ''
         finally:
             out = ''
@@ -561,9 +561,9 @@ class TracingRunner(object):
 
 
 if __name__ == '__main__':
-    # imgdir = f'/data/kfchen/trace_ws/to_gu/img' # full set
-    imgdir = f"/data/kfchen/trace_ws/trace_consensus_test/img" # test set
-    outdir = f'/data/kfchen/trace_ws/trace_consensus_test/result'
+    data_name = 'images'
+    imgdir = f"/data/kfchen/trace_ws/topology_test/512_seg" # test set
+    outdir = f'/data/kfchen/trace_ws/topology_test/ori_trace_result/from_seg_full'
 
     vaa3d_path = '/home/kfchen/Vaa3D_CentOS_64bit_v3.601/bin/start_vaa3d.sh'
     file_ext = 'tif'
@@ -573,18 +573,18 @@ if __name__ == '__main__':
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
+    tracers = ['APP1', 'APP2', 'MOST', 'NEUTUBE', 'SNAKE', 'SimpleTracing1',
+              'SimpleTracing2', 'SimpleTracing3', 'TreMap', 'MST',
+              'NeuroGPSTree', 'FMST', 'MeanShift', 'CWlab11', 'LCM_boost', 'NeuroStalker',
+              'nctuTW', 'tips_GD', 'SimpleAxisAnalyzer', 'NeuronChaser', 'smartTracing',
+              'neutu_autotrace', 'Advantra', 'RegMST', 'EnsembleNeuronTracer',
+              'EnsembleNeuronTracerV2n', 'EnsembleNeuronTracerV2s', 'threeDTraceSWC']
     # tracers = ['APP1', 'APP2', 'MOST', 'NEUTUBE', 'SNAKE', 'SimpleTracing1',
     #           'SimpleTracing2', 'SimpleTracing3', 'TreMap', 'MST',
-    #           'NeuroGPSTree', 'FMST', 'MeanShift', 'CWlab11', 'LCM_boost', 'NeuroStalker',
-    #           'nctuTW', 'tips_GD', 'SimpleAxisAnalyzer', 'NeuronChaser', 'smartTracing',
+    #           'NeuroGPSTree', 'MeanShift', 'CWlab11', 'LCM_boost', 'NeuroStalker',
+    #           'SimpleAxisAnalyzer', 'NeuronChaser', 'smartTracing',
     #           'neutu_autotrace', 'Advantra', 'RegMST', 'EnsembleNeuronTracer',
-    #           'EnsembleNeuronTracerV2n', 'EnsembleNeuronTracerV2s', 'threeDTraceSWC']
-    tracers = ['APP1', 'APP2', 'MOST', 'NEUTUBE', 'SimpleTracing1',
-              'TreMap', 'MST',
-              'NeuroGPSTree', 'MeanShift', 'CWlab11', 'LCM_boost',
-              'nctuTW', 'tips_GD', 'SimpleAxisAnalyzer', 'NeuronChaser', 'smartTracing',
-              'neutu_autotrace', 'Advantra', 'EnsembleNeuronTracer',
-              'EnsembleNeuronTracerV2n', 'EnsembleNeuronTracerV2s']
+    #           'EnsembleNeuronTracerV2n', 'EnsembleNeuronTracerV2s']
 
     # tracers = ['APP2_NEW1', 'NeuroGPSTree2', 'NeuronChaser2',
     #           'Advantra2', 'APP2_NEW2', 'APP2_NEW3',
@@ -592,7 +592,8 @@ if __name__ == '__main__':
     # tracers = ['APP2_NEW1', 'Advantra2', 'NeuronChaser2']
     # FMST is very memory-intensive!
     # tips_GD, threeDTraceSWC, EnsembleNeuronTracer are problematic
-    nprocessors = 16
+    nprocessors = 6
 
     tr = TracingRunner(vaa3d_path, tracers)
-    tr.run_in_tracer_file(imgdir, outdir, nprocessors, with_subdir=with_subdir, file_ext=file_ext, distinguish_str=distinguish_str)
+    tr.run_in_tracer_file(imgdir, outdir, nprocessors, with_subdir=with_subdir, file_ext=file_ext,
+                          distinguish_str=distinguish_str)

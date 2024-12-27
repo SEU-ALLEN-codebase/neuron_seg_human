@@ -1,6 +1,8 @@
 import os.path
 import time
 import glob
+
+# from nnUNet.scripts.val_gamma_via_hist import common_files
 from simple_swc_tool.Topology_scoring import metrics_delin as md
 import tifffile
 import pandas as pd
@@ -9,6 +11,10 @@ import concurrent.futures
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
+import joblib
+
 
 def main_opt(G_gt_path, out_dir):
     result_list, failed_files = [], []
@@ -68,7 +74,7 @@ def main_opt(G_gt_path, out_dir):
         failed_files.append(G_gt_path)
         return [], failed_files
 
-    # print(result_list)
+    print(result_list)
     return result_list, failed_files
 
 def my_opt(G_gt_path, out_dir, csv_file):
@@ -132,13 +138,14 @@ def my_opt(G_gt_path, out_dir, csv_file):
     }
     result_list = []
     failed_files = []
+    gt_dir = G_gt_path
     swc_files = glob.glob(os.path.join(gt_dir, '*.swc'))
     # swc_files = swc_files[:10]
 
     # for G_gt_path in swc_files:  # 读所有的swc文件
     #     result_list, failed_files = main_opt(G_gt_path, out_dir, result_list, failed_files)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
         progress = tqdm(total=len(swc_files), desc='Processing SWC Files', unit='file')
         future_to_file = {executor.submit(main_opt, G_gt_path, out_dir): G_gt_path for
                           G_gt_path in swc_files}
@@ -388,6 +395,106 @@ def plot_box_of_swc_list(opt_result_files, labels, box_file):
     plt.savefig(box_file)
     plt.close()
 
+def opt_analyse_file_v2(gt_swc_file, pred_swc_file, result_file):
+    G_gt = md.load_graph_swc(gt_swc_file)
+    G_pred = md.load_graph_swc(pred_swc_file)
+
+    result_list = []
+
+    id = os.path.basename(gt_swc_file).split(".")[0].split('_')[0]
+    id = int(id)
+    result_list.append(id)  # ["ID"]
+
+    f1, precision, recall, \
+        tp, pp, ap, \
+        matches_g, matches_hg, \
+        g_gt_snap, g_pred_snap = md.opt_j(G_gt,
+                                          G_pred,
+                                          th_existing=1,  # 在捕获过程中，只有当该边的所有端点都不在th_existing范围内时，才会将一个附加节点插入到该边中
+                                          th_snap=25,  # 如果一个点到最近的边的距离小于th_snap，那么它就被折入图中
+                                          alpha=100)  # 鼓励匹配具有相似顺序的两个节点
+    result_list.append(precision)  # ["optj_precision"]
+    result_list.append(recall)  # ["optj_recall"]
+    result_list.append(f1)  # ["optj_f1"]
+
+    # --------------------------------------------------opt_p
+    n_conn_precis, n_conn_recall, \
+        n_inter_precis, n_inter_recall, \
+        con_prob_precis, con_prob_recall, con_prob_f1 = md.opt_p(G_gt, G_pred)
+
+    result_list.append(con_prob_precis)  # ["optp_con_prob_precis"]
+    result_list.append(con_prob_recall)  # ["optp_con_prob_recall"]
+    result_list.append(con_prob_f1)  # ["optp_con_prob_f1"]
+
+    # --------------------------------------------------opt_g
+    f1, spurious, missings, \
+        n_preds_sum, n_gts_sum, \
+        n_spurious_marbless_sum, \
+        n_empty_holess_sum = md.opt_g(G_gt, G_pred,
+                                      spacing=10,
+                                      dist_limit=300,
+                                      dist_matching=25,
+                                      N=50,  # to speed up this script
+                                      verbose=False)
+    result_list.append(spurious)  # ["optg_spurious"]
+    result_list.append(missings)  # ["optg_missings"]
+    result_list.append(f1)  # ["optg_f1"]
+    print(result_list, len(result_list))
+
+    if(len(result_list) == 10):
+        np.savetxt(result_file, result_list, fmt='%s', delimiter=',')
+
+def current_task(gt_swc_file, pred_swc_file, opt_result_file):
+    # result_file = os.path.join(opt_result_dir, gt_swc_file.replace('.swc', '.npy'))
+    if((not os.path.exists(opt_result_file)) and os.path.exists(gt_swc_file) and os.path.exists(pred_swc_file)):
+        try:
+            opt_analyse_file_v2(gt_swc_file, pred_swc_file, opt_result_file)
+        except Exception as e:
+            print(f"Error processing file {gt_swc_file}: {e}")
+
+def opt_analyse_dir_v2(gt_swc_dir, pred_swc_dir):
+    opt_result_dir = pred_swc_dir + "_opt_result"
+    os.makedirs(opt_result_dir, exist_ok=True)
+
+    gt_swc_files = [f for f in os.listdir(gt_swc_dir) if f.endswith('.swc')]
+    pred_swc_files = [f for f in os.listdir(pred_swc_dir) if f.endswith('.swc')]
+    gt_ids = [int(f.split('.')[0].split('_')[0]) for f in gt_swc_files]
+    pred_ids = [int(f.split('.')[0].split('_')[0]) for f in pred_swc_files]
+    common_ids = set(gt_ids) & set(pred_ids)
+
+    gt_id_map = {int(f.split('.')[0].split('_')[0]): f for f in gt_swc_files}
+    pred_id_map = {int(f.split('.')[0].split('_')[0]): f for f in pred_swc_files}
+    todo_pairs = []
+    for id in common_ids:
+        todo_pairs.append((gt_id_map[id], pred_id_map[id]))
+
+    joblib.Parallel(n_jobs=32)(joblib.delayed(current_task)(
+        os.path.join(gt_swc_dir, gt_swc_file),
+        os.path.join(pred_swc_dir, pred_swc_file),
+        os.path.join(opt_result_dir, pred_swc_file.replace('.swc', '.npy'))) for gt_swc_file, pred_swc_file in tqdm(todo_pairs)
+    )
+
+    total_opt_result = []
+    for gt_swc_file, pred_swc_file in todo_pairs:
+        result_file = os.path.join(opt_result_dir, pred_swc_file.replace('.swc', '.npy'))
+        if(os.path.exists(result_file)):
+            total_opt_result.append(np.loadtxt(result_file, delimiter=','))
+
+    # to df
+    # print(total_opt_result)
+    df = pd.DataFrame(total_opt_result, columns=['ID', 'optj_precision', 'optj_recall', 'optj_f1',
+                                                    'optp_con_prob_precis', 'optp_con_prob_recall', 'optp_con_prob_f1',
+                                                    'optg_spurious', 'optg_missings', 'optg_f1'])
+    # id to int
+    df['ID'] = df['ID'].astype(int)
+    # sort
+    df = df.sort_values(by='ID')
+    df.to_csv(opt_result_dir+'.csv', index=False)
+
+
+
+
+
 if __name__ == '__main__':
     num_false_set = [1, 5, 10, 15, 20, 25, 30, 35, 40]
 
@@ -399,15 +506,26 @@ if __name__ == '__main__':
     work_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet"
     loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
     out_dirs = [os.path.join(work_dir, loss) + "/8_estimated_radius_swc" for loss in loss_list]
+    out_dirs = [
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_seg/Advantra",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_seg/APP1",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_seg/APP2",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_seg/CWlab",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_seg/MOST",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_seg/MST",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_skel_re_connect/APP2",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_skel_re_connect/CWlab",
+        "/data/kfchen/trace_ws/topology_test/rescaled_trace_result/from_skel_re_connect/MST",
+    ]
 
-    # for out_dir in out_dirs:
-    #     print('processing:', out_dir)
-    #     # out_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc"
-    #     # img_dir = r"/data/kfchen/trace_ws/to_gu/img"
-    #     # save_path = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/result.txt"
-    #     csv_file = out_dir + "_opt_result.csv"
-    #
-    #     # my_opt(gt_dir, out_dir, csv_file)
+    for out_dir in out_dirs:
+        print('processing:', out_dir)
+        # out_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc"
+        # img_dir = r"/data/kfchen/trace_ws/to_gu/img"
+        # save_path = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/result.txt"
+        csv_file = out_dir + "_opt_result.csv"
+        if(not os.path.exists(csv_file)):
+            my_opt(gt_dir, out_dir, csv_file)
     #
     #     # 重新处理id
     #     # df = pd.read_csv(csv_file)

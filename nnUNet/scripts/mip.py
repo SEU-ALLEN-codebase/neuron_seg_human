@@ -192,7 +192,7 @@ def get_mip_swc(swc_file, image, projection_direction='xy', ignore_background=Fa
     point_l = Readswc_v2(swc_file)
 
     color = (255, 0, 0)
-    thickness = 2
+    thickness = 1
 
 
 
@@ -217,7 +217,7 @@ def get_mip_swc(swc_file, image, projection_direction='xy', ignore_background=Fa
 
 
     color = (255, 128, 0)
-    thickness = 5
+    thickness = 3
     if (projection_axes == 0):
         cv2.circle(background, (int(point_l.p[1].x), int(point_l.p[1].y)), thickness, color, -1)
     elif (projection_axes == 1):

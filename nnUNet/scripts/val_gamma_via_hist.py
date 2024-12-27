@@ -234,8 +234,14 @@ plt.subplot(1, 2, 1)
 # sns.histplot(x=bins, weights=hist2_sum, color='red', label='Folder 2', alpha=0, kde=True, bins=40)
 for i in range(4):
     print(len(hist_sum_list[i]))
+
+middle_range = (0.2,  0.8) # 550
 for i in range(4):
-    sns.histplot(x=bins, weights=hist_sum_list[i]/1.28, color=color_list[i], label=label_list[i], alpha=0, kde=True, bins=40)
+    # print middle range
+    print(f'{label_list[i]}: {np.sum(hist_sum_list[i][int(middle_range[0]*128):int(middle_range[1]*128)]):.4f}')
+# 0.01426
+for i in range(4):
+    sns.histplot(x=bins, weights=hist_sum_list[i]/1.28, color=color_list[i], label=label_list[i], alpha=0.2, kde=True, bins=40)
 plt.title('')
 plt.xlabel('Normalized Intensity')
 plt.ylabel('Normalized Frequency')

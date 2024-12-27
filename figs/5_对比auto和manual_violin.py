@@ -27,7 +27,7 @@ def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\va
     output, err = p.communicate()
     output_copy = output
     output = output.decode().splitlines()[35:-2]
-    id = int(os.path.split(swc_file)[-1].split('_')[0].split('.')[0])
+    id = os.path.split(swc_file)[-1].split('_')[0].split('.')[0]
 
     info_dict = {}
     for s in output:
@@ -148,10 +148,14 @@ def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\va
 #     plt.close()
 
 def plot_violin(df_a, df_b, violin_file=None, labels=['GS', 'Auto'],
-                feature_names=['Number of Bifurcatons', 'Number of Branches', 'Number of Tips',
-                               'Overall Width', 'Overall Height', 'Overall Depth', 'Total Length',
-                               'Max Euclidean Distance', 'Max Path Distance', 'Max Branch Order', 'N_stem']
-                ):
+                feature_names=[
+                    'N_stem', 'Number of Bifurcatons',
+                    'Number of Branches', 'Number of Tips', 'Overall Width', 'Overall Height',
+                    'Overall Depth', 'Total Length',
+                    'Max Euclidean Distance', 'Max Path Distance',
+                    'Max Branch Order',
+                ]
+            ):
     # feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
     ids1 = df_a['ID'].tolist()
     ids2 = df_b['ID'].tolist()
@@ -172,14 +176,11 @@ def plot_violin(df_a, df_b, violin_file=None, labels=['GS', 'Auto'],
         'N_stem': 'Number of Stems',
         'Number of Tips': 'Number of Tips',
         'Max Branch Order': 'Max Branch Order',
-        'N_node': 'Number of Nodes',
         'Number of Bifurcatons': 'Number of Bifurcations',
         'Overall Width': 'OveWidth (μm)',
         'Overall Height': 'Height (μm)',
         'Overall Depth': 'Depth (μm)',
         'Max Euclidean Distance': 'Max Euclidean Dist. (μm)',
-        # 'Max Branch Order': 'Max Branch Order',
-        # 'Average Bifurcation Angle Remote': 'Avg. Remote BA (°)'
     }
 
     num_features = len(feature_names)
@@ -188,7 +189,6 @@ def plot_violin(df_a, df_b, violin_file=None, labels=['GS', 'Auto'],
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 4, 4 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
     axes = axes.flatten()
     plt.rcParams.update({'font.size': 20})  # 更新字体大小
-    plt.rcParams['font.family'] = 'Times New Roman'
 
     df_a['Type'], df_b['Type'] = labels
     df = pd.concat([df_a, df_b], axis=0)
@@ -226,14 +226,6 @@ def plot_violin(df_a, df_b, violin_file=None, labels=['GS', 'Auto'],
 
         # 添加相关系数注释
         ax.text(0.5, 0.95, f"Corr: {corr:.2f}", transform=ax.transAxes,
-                fontsize=15, verticalalignment='top', horizontalalignment='center',
-                bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
-
-        # 添加平均值
-        mean_a = type_a_values.mean()
-        mean_b = type_b_values.mean()
-
-        ax.text(0.5, 0.85, f"Mean: {mean_a:.2f} / {mean_b:.2f}", transform=ax.transAxes,
                 fontsize=15, verticalalignment='top', horizontalalignment='center',
                 bbox=dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white"))
 
@@ -668,56 +660,7 @@ def l_measure_swc_dir(swc_dir, result_csv, v3d_path = r"/home/kfchen/Vaa3D-x.1.1
 
 
 if __name__ == '__main__':
-    v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
-    net_work_list = ["nnunet"]
-    loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
-    swc_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/8_estimated_radius_swc" for loss in loss_list]
-    swc_dir_list.append("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab")
-    # swc_dir_list = ['/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc']
-    swc_dir_list = [
-        '/data/kfchen/trace_ws/paper_trace_result/manual/origin_anno_swc_sorted_1um',
-        '/data/kfchen/trace_ws/paper_trace_result/manual/double_checked_anno_swc_sorted_1um',
-
-    ]
-
-
-
-    for swc_dir in swc_dir_list:
-        result_csv = swc_dir + "_l_measure.csv"
-        if(not os.path.exists(result_csv)):
-            l_measure_swc_dir(swc_dir, result_csv, v3d_path)
-
-
-    # dfa = pd.read_csv(swc_dir_list[0] + "_l_measure.csv")
-    # dfb = pd.read_csv(swc_dir_list[1] + "_l_measure.csv")
-    # plot_delta_hist(dfa, dfb, "/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/soma_recon_delta_hist.png", labels=['swc', 're_connect']
-    #                 , feature_names=['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order'])
-
-    #
-    # plot_box_of_swc_list([swc_dir + "_l_measure.csv" for swc_dir in swc_dir_list],
-    #                      ['Baseline', 'clDice', 'SkelRec', 'Proposed', "Label"],
-    #                      "/data/kfchen/trace_ws/paper_trace_result/nnunet/box.png")
-
-
-
-
-
-    # swc_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/7_scaled_1um_swc"
-    # result_csv = swc_dir + "_l_measure.csv"
-    # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
-
-    # swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10"
-    # result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv"
-    # # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
-    #
-    # plot_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/hist.png"
-
-
     df_a = pd.read_csv(r"/data/kfchen/trace_ws/paper_trace_result/manual/origin_anno_swc_sorted_1um_l_measure.csv")
-    df_b = pd.read_csv(r"/data/kfchen/trace_ws/paper_trace_result/manual/double_checked_anno_swc_sorted_1um_l_measure.csv")
-    violin_file = r"/data/kfchen/trace_ws/paper_trace_result/manual/violin_ori_dbc.png"
+    df_b = pd.read_csv(r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc_l_measure.csv")
+    violin_file = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/manual_auto_violin.png"
     plot_violin(df_a, df_b, violin_file, labels=['Manual', 'Auto'])
-
-
-    # plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
-    # plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])

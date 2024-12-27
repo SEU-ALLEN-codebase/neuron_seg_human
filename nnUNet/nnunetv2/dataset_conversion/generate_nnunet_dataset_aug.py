@@ -254,12 +254,16 @@ def move_test_data(dataset_name):
         os.remove(new_json_file)
     shutil.copy(json_file, new_json_file)
 
-
+def generate_14k_good_sample():
+    target_tif_dir = "/data/kfchen/nnUNet/nnUNet_raw/Dataset180_deflu_gamma/14k_test"
+    source_json_dir =
+    source_tif_dir = 
 
 if __name__ == '__main__':
     dataset_name = 'Dataset180_deflu_gamma' # 减小soma周围荧光
     generate_dataset(dataset_name)
     move_test_data(dataset_name)
+
     dataset_id = dataset_name[7:10]
     cmd = f"nnUNetv2_plan_and_preprocess -d {dataset_id} -c 3d_fullres --verify_dataset_integrity"
     print(cmd)

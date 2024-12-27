@@ -18,6 +18,7 @@ from nnUNet.scripts.mip import get_mip_swc, get_mip
 from nnUNet.nnunetv2.dataset_conversion.generate_nnunet_dataset import augment_gamma
 import tifffile
 import numpy as np
+import scipy.stats as stats
 
 
 def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\vaa3d_msvc.exe'):
@@ -27,7 +28,7 @@ def calc_global_features(swc_file, vaa3d=r'D:\Vaa3D_V4.001_Windows_MSVC_64bit\va
     output, err = p.communicate()
     output_copy = output
     output = output.decode().splitlines()[35:-2]
-    id = int(os.path.split(swc_file)[-1].split('_')[0].split('.')[0])
+    id = os.path.split(swc_file)[-1].split('_')[0].split('.')[0]
 
     info_dict = {}
     for s in output:
@@ -246,59 +247,6 @@ def plot_violin(df_a, df_b, violin_file=None, labels=['GS', 'Auto'],
     plt.savefig(violin_file)
     plt.close()
 
-
-
-def plot_box(df_a, df_b, box_file, labels=[]):
-    # feature_names = ['N_node', 'Soma_surface', 'N_stem', 'Number of Bifurcatons',
-    #                 'Number of Branches', 'Number of Tips', 'Overall Width', 'Overall Height',
-    #                 'Overall Depth', 'Average Diameter', 'Total Length', 'Total Surface',
-    #                 'Total Volume', 'Max Euclidean Distance', 'Max Path Distance',
-    #                 'Max Branch Order', 'Average Contraction', 'Average Fragmentation',
-    #                 'Average Parent-daughter Ratio', 'Average Bifurcation Angle Local',
-    #                 'Average Bifurcation Angle Remote', 'Hausdorff Dimension']
-    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length']
-    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
-                         'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
-                         'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
-
-    num_features = len(feature_names)
-    cols = 4
-    rows = (num_features + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*2, 2 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
-    axes = axes.flatten()
-    plt.rcParams.update({'font.size': 20})  # 更新字体大小
-    # 设置字体 times new roman
-    plt.rcParams['font.family'] = 'Times New Roman'
-
-    df_a['Type'], df_b['Type'] = labels
-    df = pd.concat([df_a, df_b], axis=0)
-    df_long = pd.melt(df, id_vars=['Type'], value_vars=feature_names, var_name='Feature', value_name='Value')
-
-    # 绘图
-    for idx, feature in enumerate(feature_names):
-        ax = axes[idx]
-        if feature == 'Number of Branches':
-            ax.set_ylim(-1.5, 150)
-        elif feature == 'Total Length':
-            ax.set_ylim(-50, 5000)
-        sns.boxplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], ax=ax,
-                    palette="viridis", linewidth=0.8, gap=.2, fliersize=0, native_scale=True)
-        # ax.set_title(feature_name_maps[feature], fontsize=15)
-        ax.set_title("")
-        ax.set_xlabel('')
-        ax.set_ylabel('')
-        ax.tick_params(axis='both', which='major', labelsize=10)  # 调整刻度标签大小
-        ax.legend().set_visible(False)
-
-
-    # 隐藏不需要的子图
-    for ax in axes[num_features:]:
-        ax.axis('off')
-
-    plt.tight_layout(pad=1.0)  # 调整布局
-    plt.savefig(box_file)
-    plt.close()
-
 def get_common_rows_from_dfs(dfs):
     # 获取所有 DataFrame 第一列的共同项
     # 假设 df 列名为 'col1'
@@ -318,19 +266,21 @@ def get_common_rows_from_dfs(dfs):
     return common_df_list
 
 def plot_box_of_swc_list(l_measure_files, labels, box_file):
-    feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length']
-    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
+    feature_names = ['Number of Branches', 'Number of Tips', 'Total Length']
+    feature_name_maps = {'Number of Branches': 'Number of Branches ↑', 'Total Length': 'Total Length (μm) ↑',
                          'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
-                         'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
+                         'Number of Tips': 'Number of Tips ↑', 'Max Branch Order': 'Max Branch Order'}
 
     num_features = len(feature_names)
-    cols = 4
+    cols = 3
     rows = (num_features + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*3, 3 * rows))  # 调整figsize和dpi提高清晰度
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*3.5, 3 * rows))  # 调整figsize和dpi提高清晰度
     axes = axes.flatten()
     # plt.rcParams.update({'font.size': 20})  # 更新字体大小
     # 设置字体 Arial
     # plt.rcParams['font.family'] = 'Arial'
+    colors = plt.get_cmap('Set3').colors
+    colors = [colors[8], colors[2], colors[5], colors[3], colors[0]]
 
     dfs = [pd.read_csv(f) for f in l_measure_files]
     dfs = get_common_rows_from_dfs(dfs)
@@ -346,21 +296,60 @@ def plot_box_of_swc_list(l_measure_files, labels, box_file):
     # 绘图
     for idx, feature in enumerate(feature_names):
         ax = axes[idx]
-        if feature == 'Number of Branches':
-            ax.set_ylim(-1.5, 150)
-        elif feature == 'Total Length':
-            ax.set_ylim(-50, 5000)
-        sns.boxplot(x='Feature', y='Value', hue='Type', data=df_long[df_long['Feature'] == feature], ax=ax,
-                    palette="viridis", gap=.2, fliersize=0, native_scale=True)
+        # if feature == 'Number of Branches':
+        #     ax.set_ylim(-1.5, 150)
+        # elif feature == 'Total Length':
+        #     ax.set_ylim(-50, 5000)
+
+        # 获取当前特征的数据子集
+        feature_data = df_long[df_long['Feature'] == feature]
+
+        # 计算positions, 每个Feature会有多个箱体
+        # positions的数量要等于每个Feature和Type的组合数量
+        positions = [0, 0.9, 1.5, 2.1, 3]
+        hue_order = feature_data['Type'].unique()  # 获取所有的hue分类，通常是['Type 1', 'Type 2']
+
+        # # 绘制箱线图
+        # sns.boxplot(x='Feature', y='Value', hue='Type', data=feature_data, ax=ax,
+        #             palette=colors, dodge=False, fliersize=0, native_scale=True, positions=positions)
+        current_data = []
+        for i, hue in enumerate(hue_order):
+            current_data.append(feature_data[feature_data['Type'] == hue]['Value'].to_numpy())
+            ax.boxplot(current_data[i], positions=[positions[i]], widths=0.5, patch_artist=True,
+                       showfliers=True, boxprops=dict(facecolor=colors[i], color='black'),
+                       medianprops=dict(color='black'), flierprops=dict(marker='o', color='black', markersize=3))
+
+        # p_values = []
+        # for i in range(len(hue_order) - 1):
+        #     group1 = current_data[i]
+        #     group2 = current_data[4]
+        #     t_stat, p_value = stats.Z(group1, group2)
+        #     p_values.append((hue_order[i], hue_order[4], p_value))
+        #
+        # # 打印p值
+        # print(f"P-values for feature {feature}:")
+        # for pair_0, pair_1, p_value in p_values:
+        #     print(f"p({pair_0} vs {pair_1}): {p_value}")
+        #
+        # y_offset = 0.1
+        # # 标记p值：可以选择显示p值和显著性标志
+        # for idx, (group1, group2, p_value) in enumerate(p_values):
+        #     x1 = positions[hue_order.tolist().index(group1)]
+        #     x2 = positions[hue_order.tolist().index(group2)]
+        #     y_max = max(max(current_data[hue_order.tolist().index(group1)]),
+        #                 max(current_data[hue_order.tolist().index(group2)]))
+        #     ax.plot([x1, x2], [y_max * (1.05 + idx * y_offset), y_max * (1.05 + idx * y_offset)], color='black', lw=1)  # 画线连接两个箱体
+        #     ax.text((x1 + x2) / 2, y_max * (1.05 + idx * y_offset), f"p = {p_value:.3f}", ha='center', va='bottom', fontsize=12)
+
         # ax.set_title(feature_name_maps[feature], fontsize=15)
         ax.set_title("")
 
-        ax.set_ylabel('')
+        # ax.set_ylabel('')
         ax.get_xaxis().set_visible(False)
         # ax.get_xaxis().set_ticks([])
-        ax.tick_params(axis='both', which='major')  # 调整刻度标签大小
         ax.legend().set_visible(False)
-        ax.set_ylabel(feature_name_maps[feature])
+        ax.set_ylabel(feature_name_maps[feature], fontsize=15)
+        ax.tick_params(axis='both', which='major', labelsize=15)
 
 
     # 隐藏不需要的子图
@@ -368,97 +357,8 @@ def plot_box_of_swc_list(l_measure_files, labels, box_file):
         ax.axis('off')
 
     plt.tight_layout(pad=1.0)  # 调整布局
-    plt.show()
-    plt.savefig(box_file)
-    plt.close()
-
-def plot_delta_hist(df_a, df_b, hist_file, labels=['GS', 'Auto'],
-                    feature_names=['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']):
-    # feature_names = ['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order']
-    feature_name_maps = {'Number of Branches': 'Number of Branches', 'Total Length': 'Total Length (μm)',
-                         'Max Path Distance': 'Max Path Distance (μm)', 'N_stem': 'Number of Stems',
-                         'Number of Tips': 'Number of Tips', 'Max Branch Order': 'Max Branch Order'}
-
-    num_features = len(feature_names)
-    cols = 5
-    rows = (num_features + cols - 1) // cols
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*3, 3 * rows), dpi=300)  # 调整figsize和dpi提高清晰度
-    axes = axes.flatten()
-    plt.rcParams.update({'font.size': 20})  # 更新字体大小
-    # 设置字体 times new roman
-    plt.rcParams['font.family'] = 'Times New Roman'
-
-    df_a.sort_values(by='ID', inplace=True)
-    df_b.sort_values(by='ID', inplace=True)
-    assert len(df_a) == len(df_b), "Dataframes should have the same length."
-
-    # 绘图
-    for idx, feature in enumerate(feature_names):
-        ax = axes[idx]
-        delta_values = df_b[feature] - df_a[feature]
-
-        # 删除0值
-        # delta_values = delta_values[delta_values != 0]
-
-        if(feature == 'N_stem'):
-            bins_number = 10
-        elif(feature == 'Total Length'):
-            bins_number = 15
-        elif(feature == 'Number of Branches'):
-            bins_number = 20
-        elif(feature == 'Number of Tips'):
-            bins_number = 10
-        elif(feature == 'Max Branch Order'):
-            bins_number = 5
-        else:
-            bins_number = 30
-
-        bins = np.linspace(delta_values.min(), delta_values.max(), bins_number)
-        if(0 not in bins):
-            min_nature = np.max(bins)
-            for bin in bins:
-                if(bin < min_nature and bin > 0):
-                    min_nature = bin
-            bins = [f - min_nature for f in bins]
-            bins.append(bins[-1] + bins[-1] - bins[-2])
-
-        if(feature == "Total Length"):
-            # 在左面添加30%的bin
-            step = bins[1] - bins[0]
-            times = round(0.2*len(bins))
-            new_bins = np.array([])
-            for i in range(times):
-                new_bins = np.append(new_bins, bins[0] - (times - i) * step)
-            bins = np.append(new_bins, bins)
-
-        # print(delta_values)
-        sns.histplot(delta_values, ax=ax, kde=True, color='skyblue', bins=bins, element="step", stat="count")
-
-        # 绘制x=0的虚线
-        ax.axvline(x=0, color='red', linestyle='--', linewidth=2)
-
-        worse_ratio = np.sum(delta_values < 0) / len(delta_values)
-        equal_ratio = np.sum(delta_values == 0) / len(delta_values)
-        better_ratio = np.sum(delta_values > 0) / len(delta_values)
-
-        ax.text(0.9, 0.5, f"better_ratio\n{better_ratio:.2%}", transform=ax.transAxes, horizontalalignment='right', color='red',
-                fontsize=12)
-        # ax.text(0.1, 0.5, f"{worse_ratio:.2%}", transform=ax.transAxes, horizontalalignment='left', color='red',
-        #         fontsize=12)
-
-        # ax.set_title(feature_name_maps[feature], fontsize=15)
-        ax.set_xlabel(f'Δ {feature_name_maps[feature]}', fontsize=15)
-        ax.set_ylabel("Frequency", fontsize=15)
-        ax.tick_params(axis='both', which='major', labelsize=10)  # 调整刻度标签大小
-        ax.legend().set_visible(False)
-
-    # 隐藏不需要的子图
-    for ax in axes[num_features:]:
-        ax.axis('off')
-
-    plt.tight_layout(pad=1.0)  # 调整布局
-    plt.savefig(hist_file)
     # plt.show()
+    plt.savefig(box_file)
     plt.close()
 
 
@@ -660,9 +560,6 @@ def l_measure_swc_dir(swc_dir, result_csv, v3d_path = r"/home/kfchen/Vaa3D-x.1.1
     progress_bar.close()
 
     df_gt = pd.DataFrame(l_measure_results)
-    if(df_gt.empty):
-        # print("Empty dataframe")
-        return
     df_gt = df_gt.sort_values(by='ID')
     df_gt.to_csv(result_csv, float_format='%g', index=False, mode='a', header=False)
 
@@ -673,51 +570,12 @@ if __name__ == '__main__':
     loss_list = ['baseline', 'cldice', 'skelrec', 'newcel_0.1']
     swc_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/8_estimated_radius_swc" for loss in loss_list]
     swc_dir_list.append("/data/kfchen/trace_ws/paper_auto_human_neuron_recon/swc_label/1um_swc_lab")
-    # swc_dir_list = ['/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/8_estimated_radius_swc']
-    swc_dir_list = [
-        '/data/kfchen/trace_ws/paper_trace_result/manual/origin_anno_swc_sorted_1um',
-        '/data/kfchen/trace_ws/paper_trace_result/manual/double_checked_anno_swc_sorted_1um',
-
-    ]
-
-
 
     for swc_dir in swc_dir_list:
         result_csv = swc_dir + "_l_measure.csv"
         if(not os.path.exists(result_csv)):
             l_measure_swc_dir(swc_dir, result_csv, v3d_path)
 
-
-    # dfa = pd.read_csv(swc_dir_list[0] + "_l_measure.csv")
-    # dfb = pd.read_csv(swc_dir_list[1] + "_l_measure.csv")
-    # plot_delta_hist(dfa, dfb, "/data/kfchen/trace_ws/paper_trace_result/nnunet/newcel_0.1/soma_recon_delta_hist.png", labels=['swc', 're_connect']
-    #                 , feature_names=['N_stem', 'Number of Branches', 'Number of Tips', 'Total Length', 'Max Branch Order'])
-
-    #
-    # plot_box_of_swc_list([swc_dir + "_l_measure.csv" for swc_dir in swc_dir_list],
-    #                      ['Baseline', 'clDice', 'SkelRec', 'Proposed', "Label"],
-    #                      "/data/kfchen/trace_ws/paper_trace_result/nnunet/box.png")
-
-
-
-
-
-    # swc_dir = r"/data/kfchen/trace_ws/paper_trace_result/nnunet/baseline/7_scaled_1um_swc"
-    # result_csv = swc_dir + "_l_measure.csv"
-    # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
-
-    # swc_dir = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10"
-    # result_csv = r"/data/kfchen/trace_ws/paper_auto_human_neuron_recon/test_seg_220/unified_recon_1um/ptls10.csv"
-    # # l_measure_swc_dir(swc_dir, result_csv, v3d_path)
-    #
-    # plot_file = "/data/kfchen/nnUNet/nnUNet_results/Dataset179_deflu_no_aug/nnUNetTrainer__nnUNetPlans__3d_fullres/fold_0/source500/hist.png"
-
-
-    df_a = pd.read_csv(r"/data/kfchen/trace_ws/paper_trace_result/manual/origin_anno_swc_sorted_1um_l_measure.csv")
-    df_b = pd.read_csv(r"/data/kfchen/trace_ws/paper_trace_result/manual/double_checked_anno_swc_sorted_1um_l_measure.csv")
-    violin_file = r"/data/kfchen/trace_ws/paper_trace_result/manual/violin_ori_dbc.png"
-    plot_violin(df_a, df_b, violin_file, labels=['Manual', 'Auto'])
-
-
-    # plot_box(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
-    # plot_delta_hist(df_a, df_b, plot_file, labels=['nnUnet', 'Proposed'])
+    plot_box_of_swc_list([swc_dir + "_l_measure.csv" for swc_dir in swc_dir_list],
+                         ['Baseline', 'clDice', 'SkelRec', 'Proposed', "Label"],
+                         "/data/kfchen/trace_ws/paper_trace_result/nnunet/l_measure_box.png")

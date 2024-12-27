@@ -48,6 +48,7 @@ import os
 import networkx as nx
 import inspect
 
+import tempfile
 
 class FileProcessingStep:
     def __init__(self, step_name, process_function, file_name, input_dirs, output_dirs=None, supplementary_files=None):
@@ -180,6 +181,7 @@ class AutoTracePipeline(FileProcessingPipeline):
         self.neuron_info_file = supplementary_files[1]
         self.name_mapping_df = pd.read_csv(self.name_mapping_file)
         self.neuron_info_df = pd.read_csv(self.neuron_info_file, encoding='gbk')
+        # self.add_step("0_swc", self.trace_app2_with_soma, ["0_seg"], ["9_swc_no_rescale_swc"])
         self.add_step("1_skel_seg", self.skel_seg, ["0_seg"], ["1_skel_seg"])
         self.add_step('2_soma_region', self.get_soma_region, ['0_seg'], ['2_soma_region', "4_soma_marker"])
         self.add_step("3_skel_with_soma", self.skel_with_soma, ["1_skel_seg", "2_soma_region"], ["3_skel_with_soma"])
@@ -359,11 +361,12 @@ class AutoTracePipeline(FileProcessingPipeline):
         if(not input_files):
             return
         img_file = input_files[0]
-        somamarker_file = input_files[1]
+        # somamarker_file = input_files[1]
+        somamarker_file = 'NULL'
         swc_file = output_files[0]
         ini_swc_path = img_file.replace('.tif', '.tif_ini.swc')
-        if (os.path.exists(swc_file) or (not os.path.exists(img_file)) or (not os.path.exists(somamarker_file))):
-            return
+        # if (os.path.exists(swc_file) or (not os.path.exists(img_file)) or (not os.path.exists(somamarker_file))):
+        #     return
         '''
             **** Usage of APP2 ****
             vaa3d -x plugin_name -f app2 -i <inimg_file> -o <outswc_file> -p [<inmarker_file> [<channel> [<bkg_thresh> 
@@ -571,13 +574,32 @@ class AutoTracePipeline(FileProcessingPipeline):
 
     def get_estimated_radius(self, input_files, output_files):
         def v3d_get_radius(img_path, swc_path, out_path):
-            # temp_img_path = os.path.join(os.path.dirname(out_path), os.path.basename(out_path).split('_')[0] + '_temp.tif')
-            # temp_swc_path = os.path.join(os.path.dirname(out_path), os.path.basename(out_path).split('_')[0] + '_temp.swc')
-            radius2d = 1
-            cmd_str = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x neuron_radius -f neuron_radius -i {img_path} {swc_path} -o {out_path} -p 10 {radius2d}'
-            cmd_str = cmd_str.replace('(', '\(').replace(')', '\)')
-            # print(cmd_str)
-            subprocess.run(cmd_str, stdout=subprocess.DEVNULL, shell=True)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # 获取文件名
+                img_filename = os.path.basename(img_path).split('_')[0] + '.tif'
+                swc_filename = os.path.basename(swc_path).split('_')[0] + '.swc'
+                output_filename = os.path.basename(out_path).split('_')[0] + '.swc'
+
+                # 设置缓存文件路径
+                img_cache_path = os.path.join(temp_dir, img_filename)
+                swc_cache_path = os.path.join(temp_dir, swc_filename)
+                out_cache_path = os.path.join(temp_dir, output_filename)
+
+                # 将文件复制到缓存路径
+                shutil.copy(img_path, img_cache_path)
+                shutil.copy(swc_path, swc_cache_path)
+
+                # 设置命令字符串
+                radius2d = 1
+                cmd_str = f'xvfb-run -a -s "-screen 0 640x480x16" {v3d_path} -x neuron_radius -f neuron_radius -i {img_cache_path} {swc_cache_path} -o {out_cache_path} -p 10 {radius2d}'
+                cmd_str = cmd_str.replace('(', '\(').replace(')', '\)')
+
+                # 执行命令
+                print(f"Running command: {cmd_str}")
+                subprocess.run(cmd_str, stdout=subprocess.DEVNULL, shell=True)
+
+                # 将结果从临时路径复制到实际输出路径
+                shutil.copy(out_cache_path, out_path)
 
         def load_swc_to_undirected_graph(swc_file_path):
             """从SWC文件加载数据，构建无向图，并记录每个节点的parent信息"""
@@ -740,7 +762,7 @@ if __name__ == "__main__":
     net_work_list = ["nnunet"]
     loss_list = ['proposed_9k', 'baseline', 'cldice', 'skelrec', 'newcel_0.1']
     work_dir_list = [f"/data/kfchen/trace_ws/paper_trace_result/nnunet/{loss}/" for loss in loss_list]
-    # work_dir_list = work_dir_list[:1]
+    work_dir_list = work_dir_list[:1]
 
     for work_dir in work_dir_list:
         print(f"Processing {work_dir}")
@@ -762,7 +784,10 @@ if __name__ == "__main__":
 
         print("Data preparation is done.")
         # pipeline_list = []
+        # 感兴趣的文件
+        interest_files = ['02578_P021_T01_-S049_RFL_R0613_LJ-20221103_LD.tif', "02796_P025_T01_-S028_LTL_R0613_RJ-20230201_YW.tif", "06007_P031_T02_(3)-S005__RTL_R0919_YS-20230522_YW.tif", "06008_P031_T02_(3)-S005__RTL_R0919_YS-20230522_YW.tif"]
         file_names = [f for f in os.listdir(seg_dir) if f.endswith('.tif')]
+        file_names = [f for f in file_names if f in interest_files]
 
         # done_dir = "/data/kfchen/trace_ws/paper_trace_result/nnunet/proposed_9k/8_estimated_radius_swc"
         # done_files = [f.replace('.swc', '.tif') for f in os.listdir(done_dir) if f.endswith('.swc')]
