@@ -1,6 +1,6 @@
 -----
 
-# Large-Scale Human Brain Neuron Morphological Reconstruction Pipeline
+# Large-Scale Human Brain Neuron Morphology Reconstruction Pipeline
 
 -----
 
