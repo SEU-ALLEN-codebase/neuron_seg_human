@@ -30,125 +30,14 @@ Here are the key features that make our pipeline stand out:
 
 -----
 
-## 📦 Code Structure
+如何使用
+1 根据skelrec的说明安装skelrec
+2 把trainner和loss函数换成我们的
+3 根据nnunet的说明，配置你的数据集，并使用下面的代码开始训练
+4 开始推理，获得segment
 
-The project is organized into a clear, modular structure to facilitate understanding, development, and maintenance.
+如何trace
+见代码
 
-```
-.
-├── src/
-│   ├── __init__.py
-│   ├── preprocessing/      # Image preprocessing modules
-│   │   ├── enhance.py      # Implements noise suppression and detail enhancement
-│   │   ├── register.py
-│   │   └── utils.py
-│   ├── segmentation/       # Image segmentation modules (nnU-Net based)
-│   │   ├── nnunet_modifications/ # Specific modifications made to nnU-Net
-│   │   │   ├── model.py
-│   │   │   ├── training.py # Modified training script to use custom loss
-│   │   │   └── custom_loss.py # Your new loss function definition
-│   │   ├── segmenter.py    # Wrapper for segmentation inference
-│   │   └── config.py       # Configuration for segmentation
-│   ├── tracing/            # Neuron tracing algorithms
-│   │   ├── swc_generator.py # Generates SWC files (standard neuron format)
-│   │   └── algorithm_xyz.py # Example tracing algorithm implementation
-│   ├── analysis/           # Quantitative analysis modules
-│   │   ├── metrics.py      # Functions for calculating morphological metrics
-│   │   ├── visualization.py # Tools for visualizing reconstructed neurons and analysis results
-│   │   └── data_loader.py  # Utilities for loading analysis data
-│   └── pipeline.py         # Main script orchestrating the entire reconstruction pipeline
-├── notebooks/              # Jupyter notebooks for experimentation, visualization, or demos
-├── scripts/
-│   ├── run_pipeline.sh     # Example shell script to run the full pipeline
-│   └── train_segmentation.sh # Script to train the segmentation model
-├── config/                 # Configuration files for the entire pipeline
-│   ├── pipeline_config.yaml
-│   └── hardware_config.yaml
-├── environment.yaml        # Conda environment definition for dependencies
-```
-
------
-
-## 🛠️ Installation
-
-To set up the project environment and run the pipeline, follow these steps:
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/YourUsername/YourRepoName.git
-    cd YourRepoName
-    ```
-2.  **Install nnU-Net:**
-    First, install `nnU-Net` by following the official instructions from their GitHub repository: [https://github.com/MIC-DKFZ/nnUNet](https://github.com/MIC-DKFZ/nnUNet). Our segmentation module is built upon and modifies this framework.
-3.  **Create and activate the Conda environment** (recommended for project-specific dependencies):
-    ```bash
-    conda env create -f environment.yaml
-    conda activate large-scale-neuron-reconstruction
-    ```
-    *Alternatively, if you prefer pip for project-specific dependencies:*
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **Download Data and Pre-trained Models:**
-    All necessary raw data and pre-trained model weights are available for download via Zenodo:
-    **[Zenodo Data and Models Link Here]** (e.g., `https://zenodo.org/record/1234567`)
-    Please download the archives and place them in your desired data and models directories (e.g., `data/raw/` and `models/nnunet_weights/`).
-
------
-
-## 🚀 Usage
-
-Detailed instructions on how to run the pipeline, including examples for each stage and how to customize configurations.
-
-### **Running the Full Pipeline**
-
-```bash
-python src/pipeline.py --config config/pipeline_config.yaml
-```
-
-### **Running Individual Stages**
-
-  * **Image Preprocessing:**
-    ```bash
-    python src/preprocessing/enhance.py --input path/to/raw/image.tiff --output path/to/processed/enhanced_image.tiff
-    ```
-  * **Image Segmentation (nnU-Net based):**
-      * **Integrating and Training with the New Loss Function:**
-        Our **connectivity-aware custom loss function** is defined in `src/segmentation/nnunet_modifications/custom_loss.py`. To train an nnU-Net model using this new loss, our modified training script (`src/segmentation/nnunet_modifications/training.py`) directly incorporates it.
-        You'll typically prepare your dataset according to nnU-Net's conventions and then initiate training. For example:
-        ```bash
-        # This script should wrap the nnU-Net training command
-        # and ensure our custom loss is used.
-        ./scripts/train_segmentation.sh
-        ```
-        *Refer to `src/segmentation/nnunet_modifications/training.py` and the main `nnU-Net` documentation for detailed training configurations and dataset setup.*
-      * *For running inference:*
-        ```bash
-        python src/segmentation/segmenter.py --input path/to/processed/enhanced_image.tiff --output path/to/processed/segmentation_mask.tiff --model path/to/models/nnunet_weights/my_model.pth
-        ```
-  * **Tracing:**
-    ```bash
-    python src/tracing/swc_generator.py --segmentation path/to/processed/segmentation_mask.tiff --output path/to/processed/reconstruction.swc
-    ```
-  * **Quantitative Analysis:**
-    ```bash
-    python src/analysis/metrics.py --swc path/to/processed/reconstruction.swc --output_csv analysis_results.csv
-    ```
-
------
-
-## 🤝 Contributing
-
-We welcome contributions to this project\! Please see our [CONTRIBUTING.md](https://www.google.com/search?q=CONTRIBUTING.md) for guidelines on how to submit issues, pull requests, and suggestions.
-
------
-
-## 📜 License
-
-This project is licensed under the [MIT License](https://www.google.com/search?q=LICENSE) - see the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
-
------
-
-## 📧 Contact
-
-If you have any questions or suggestions, feel free to open an issue in this repository or contact [Your Name/Email] at [your.email@example.com].
+如何评估
+见代码，提供了文章中几种常见评估方法的使用方式
