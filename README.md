@@ -50,7 +50,7 @@ The `tracer.py` script converts segmentation results into neuron morphologies (S
 
 ## Evaluation
 
-`metrics.py` provides tools to evaluate the quality of reconstructed morphologies against ground truth.
+`metrics.py` provides tools to evaluate the quality of reconstructed morphologies.
 
 ---
 
