@@ -24,7 +24,7 @@ Follow the official installation instructions for `skelrec` from its GitHub repo
     
 
 #### Replace nnUNetv2 Files
-Locate your nnUNetv2 installation path (e.g., via `python -c "import nnunetv2, inspect; print(inspect.getfile(nnunetv2))"`). Copy the following files from this repository into the corresponding locations in that installation:
+Locate your nnUNetv2 installation path (in skelrec). Copy the following files from this repository into the corresponding locations in that installation:
 
 - `nnunetv2/training/loss/compound_losses.py`
 - `nnunetv2/training/loss/dice.py`
