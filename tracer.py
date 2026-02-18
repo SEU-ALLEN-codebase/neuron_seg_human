@@ -63,6 +63,13 @@ import cupy as cp
 import cupyx
 
 
+#: Path to the Vaa3D executable used for APP2 tracing and radius estimation.
+v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
+
+#: Maximum number of worker processes used when converting segmentation files.
+MAX_PROCESSES = 16
+
+
 class swcPoint:
     """Basic SWC node representation."""
 
@@ -383,13 +390,6 @@ def write_swc(
         os.remove(filepath)
     with open(filepath, mode="a") as file_handle:
         file_handle.writelines(lines)
-
-
-#: Path to the Vaa3D executable used for APP2 tracing and radius estimation.
-v3d_path = r"/home/kfchen/Vaa3D-x.1.1.4_Ubuntu/Vaa3D-x"
-
-#: Maximum number of worker processes used when converting segmentation files.
-MAX_PROCESSES = 16
 
 
 class FileProcessingStep:
